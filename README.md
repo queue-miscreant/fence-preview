@@ -5,7 +5,8 @@ A plugin for previewing images from nvim.
 Somewhat of a reimplementation of [vim-graphical-preview](https://github.com/bytesnake/vim-graphical-preview),
 which refused to compile on my Linux box.
 
-Forked from (and depends upon) [nvim-image-extmarks](https://github.com/queue-miscreant/nvim-image-extmarks).
+A sister project to [nvim-image-extmarks](https://github.com/queue-miscreant/nvim-image-extmarks),
+which it depends upon.
 
 
 Requirements
@@ -45,6 +46,7 @@ Functions
 
 Exposed functions
 
+
 Keys
 ----
 
@@ -67,3 +69,9 @@ TODOs
 -----
 
 - LaTeX update rendering currently forces all images to be available first
+- Default LaTeX display is not eye-searing
+    - Simple: white text on black
+    - Difficult: configurable, white text on transparent
+    - Hide content with highlights
+    - Highlight removed when cursor crosses fence
+- Errors along the LaTeX toolchain

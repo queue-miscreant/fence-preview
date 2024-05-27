@@ -59,4 +59,10 @@ def generate_content(node: Node) -> Path:
             new_path = generate_latex_from_gnuplot_file(path)
             path = new_path.with_suffix(".svg")
 
+    # Rasterize svg
+    if path.suffix == ".svg":
+        with Image(resolution=(600.0, 600.0), filename=path) as outfile:
+            outfile.save(filename=path.with_suffix(".png"))
+            path = path.with_suffix(".png")
+
     return path

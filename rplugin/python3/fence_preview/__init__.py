@@ -62,7 +62,6 @@ class NvimImage:
 
     @pynvim.function("FenceUpdateContent", sync=True)
     def update_content(self, args: List[str]):
-        log.info("HERE")
         buffer: Buffer = self.nvim.current.buffer
         # This can be async from nvim...
         nodes = process_content(

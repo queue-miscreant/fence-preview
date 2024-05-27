@@ -12,8 +12,9 @@ end
 function fence_preview.bind()
   vim.cmd [[
     augroup VimImage
-      autocmd! TextChanged,TextChangedI
-      autocmd TextChanged,TextChangedI <buffer> call FenceUpdateContent()
+      autocmd! TextChanged
+      autocmd TextChanged <buffer> call FenceUpdateContent()
+      autocmd InsertLeave <buffer> call FenceUpdateContent()
     augroup END
   ]]
 end
