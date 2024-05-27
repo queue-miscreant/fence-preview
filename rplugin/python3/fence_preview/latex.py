@@ -3,7 +3,7 @@ from pathlib import Path
 import shutil
 import subprocess
 
-from tmux_image.delimit import hash_content, Node, ContentType
+from fence_preview.delimit import hash_content, Node, ContentType
 
 log = logging.getLogger(__name__)
 

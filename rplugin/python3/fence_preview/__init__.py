@@ -10,9 +10,9 @@ from typing import Any, DefaultDict, Dict, List, Optional, Tuple
 
 import pynvim
 from pynvim.api import Buffer
-from tmux_image.image import prepare_blob, SixelCache
-from tmux_image.delimit import process_content, DEFAULT_REGEXES, Node
-from tmux_image.latex import ART_PATH
+from fence_preview.image import prepare_blob, SixelCache
+from fence_preview.delimit import process_content, DEFAULT_REGEXES, Node
+from fence_preview.latex import ART_PATH
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
