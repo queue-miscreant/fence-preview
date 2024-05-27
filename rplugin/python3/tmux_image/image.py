@@ -21,56 +21,22 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
 
 
-@dataclass(frozen=True)
-class CropDims:
-    height: int
-    top_bottom: Optional[Tuple[int, int]]
-
-
 @dataclass
 class SixelCache:
     content_id: str
-    blob_cache: Dict[CropDims, bytes]
+    extmark_id: int
+    path: Path
 
 
-def image_to_sixel(image: Image, dims: CropDims) -> Optional[bytes]:
-    factor = dims.height / image.height
-    # log.debug("%s %s", factor, img.width)
-    # log.debug(img.height)
-    image.resize(int(image.width * factor), int(image.height * factor))
+def prepare_blob(node: Node) -> Optional[Tuple[Node, Path]]:
+    # if (cache := sixel_cache.get(node.content_id)):
+    #     return node, cache.path
+    image_path = generate_content(node)
 
-    if dims.top_bottom is not None:
-        top, bottom = dims.top_bottom
-        image.crop(top=top, height=image.height - bottom)
-
-    return image.make_blob("sixel")
+    return node, image_path
 
 
-def path_to_sixel(path: Path, dims: CropDims) -> Optional[bytes]:
-    if not path.exists():
-        raise ValueError("File does not exist")
-
-    with Image(filename=str(path)) as img:
-        return image_to_sixel(img, dims)
-
-
-def prepare_blob(node: Node, dims: CropDims, sixel_cache: Dict[str, SixelCache]) -> Optional[Tuple[Node, bytes]]:
-    if (cache := sixel_cache.get(node.content_id)) and dims in cache.blob_cache:
-        return node, cache.blob_cache[dims]
-    image = generate_content(node)
-    blob = image_to_sixel(image, dims)
-
-    if blob is None:
-        return None
-
-    if node.content_id not in sixel_cache:
-        sixel_cache[node.content_id] = SixelCache(node.content_id, {})
-    sixel_cache[node.content_id].blob_cache[dims] = blob
-
-    return node, blob
-
-
-def generate_content(node: Node) -> Image:
+def generate_content(node: Node) -> Path:
     path = path_from_content(node)
     missing = not path.exists()
 
@@ -93,8 +59,4 @@ def generate_content(node: Node) -> Image:
             new_path = generate_latex_from_gnuplot_file(path)
             path = new_path.with_suffix(".svg")
 
-    image = Image(resolution=(600.0, 600.0), filename=str(path))
-    # image.compression_quality = 5
-    # image.transform_colorspace("gray")
-    # image.quantize(8, "gray", 0, False, False)
-    return image
+    return path

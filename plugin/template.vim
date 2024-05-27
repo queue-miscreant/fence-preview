@@ -3,4 +3,9 @@ if !has("nvim")
   finish
 endif
 
-lua require "vim_image"
+if !exists("g:nvim_image_extmarks_loaded")
+  echo "Missing dependency nvim_image_extmarks"
+  finish
+endif
+
+lua require "fence_preview"

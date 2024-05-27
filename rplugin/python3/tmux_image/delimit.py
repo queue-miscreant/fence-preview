@@ -68,7 +68,7 @@ def make_math_content(
     try:
         return Node(
             content_id=hash_content("\n".join(content)),
-            range=(line_number, line_number + line_count),
+            range=(line_number, line_number + line_count - 1),
             content=content,
             content_type=ContentType[name.upper()],
         )
