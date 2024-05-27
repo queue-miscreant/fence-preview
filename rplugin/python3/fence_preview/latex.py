@@ -15,11 +15,11 @@ MATH_START = """
 \\usepackage{amsmath,amsfonts,amsthm}
 \\usepackage{xcolor}
 \\begin{document}
-$$
+\\[
 """
 
 MATH_END = """
-$$
+\\]
 \\end{document}
 """
 
@@ -43,7 +43,7 @@ def parse_equation(
     if not tex_path.exists():
         with open(tex_path, "w") as file:
             file.write(MATH_START)
-            file.write(node.content)
+            file.write(node.content.strip())
             file.write(MATH_END)
 
     return generate_svg_from_latex(path, zoom)

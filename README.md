@@ -68,10 +68,13 @@ Plugin highlights
 TODOs
 -----
 
+- Re-implement caching
 - LaTeX update rendering currently forces all images to be available first
 - Default LaTeX display is not eye-searing
     - Simple: white text on black
     - Difficult: configurable, white text on transparent
     - Hide content with highlights
     - Highlight removed when cursor crosses fence
+- Sometimes multiple extmarks get added because of asynchronicity
+    - Buffering?
 - Errors along the LaTeX toolchain

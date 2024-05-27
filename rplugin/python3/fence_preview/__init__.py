@@ -69,7 +69,7 @@ class NvimImage:
             self._regexes,
         )
         # TODO
-        self.nvim.lua.remove_images()
+        self.nvim.lua.sixel_extmarks.remove_all()
 
         # ...but this can't be
         asyncio.create_task(self.draw_visible(nodes, force=True))
