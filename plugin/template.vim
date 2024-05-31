@@ -9,3 +9,5 @@ if !exists("g:nvim_image_extmarks_loaded")
 endif
 
 lua require "fence_preview"
+
+" let g:image_extmarks_slow_insert = 1

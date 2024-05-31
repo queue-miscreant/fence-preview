@@ -2,7 +2,7 @@ from dataclasses import dataclass
 import logging
 from pathlib import Path
 
-from typing import Optional, Dict, Tuple
+from typing import Optional, Tuple
 
 from wand.image import Image
 
@@ -19,13 +19,6 @@ from fence_preview.latex import (
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
-
-
-@dataclass
-class SixelCache:
-    content_id: str
-    extmark_id: int
-    path: Path
 
 
 def prepare_blob(node: Node) -> Optional[Tuple[Node, Path]]:

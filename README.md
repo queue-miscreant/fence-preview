@@ -16,7 +16,7 @@ Requirements
 - LaTeX (optional)
 - Python libraries:
     - pynvim
-    - wand (Python Imagemagick wrapper)
+    - wand (Python ImageMagick wrapper)
 - Plugins
     - [nvim-image-extmarks](https://github.com/queue-miscreant/nvim-image-extmarks)
 
@@ -69,7 +69,10 @@ TODOs
 -----
 
 - Re-implement caching
+- Run diffs between buffer changes
+    - Only changes extmarks which correspond to changed content
 - LaTeX update rendering currently forces all images to be available first
+- Regenerate LaTeX only when cursor is outside fence (and extmark can be re-rendered)
 - Default LaTeX display is not eye-searing
     - Simple: white text on black
     - Difficult: configurable, white text on transparent
@@ -77,4 +80,4 @@ TODOs
     - Highlight removed when cursor crosses fence
 - Sometimes multiple extmarks get added because of asynchronicity
     - Buffering?
-- Errors along the LaTeX toolchain
+- Errors along the LaTeX toolchain render as extmark errors

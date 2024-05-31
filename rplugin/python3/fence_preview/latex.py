@@ -174,7 +174,7 @@ def parse_latex(
     content: str,
 ) -> Path:
     """Parse a latex content and convert it to a SVG file"""
-    path = (Path(ART_PATH) / hash_content(content)).with_suffix(".svg")
+    path = Path(ART_PATH, hash_content(content)).with_suffix(".svg")
 
     # create a new tex file containing the equation
     tex_path = path.with_suffix(".tex")

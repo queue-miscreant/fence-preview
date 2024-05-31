@@ -6,7 +6,7 @@ import itertools
 import logging
 import re
 
-from typing import Dict, List, Literal, Optional, Tuple
+from typing import List, Optional, Tuple
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)

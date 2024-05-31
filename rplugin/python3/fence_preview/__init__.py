@@ -1,16 +1,15 @@
 import asyncio
 from collections import defaultdict
-from dataclasses import asdict
 import logging
-from pathlib import Path
 import sys
+import time
 import traceback
 
-from typing import Any, DefaultDict, Dict, List, Optional, Tuple
+from typing import Any, DefaultDict, Dict, List, Tuple
 
 import pynvim
 from pynvim.api import Buffer
-from fence_preview.image import prepare_blob, SixelCache
+from fence_preview.image import prepare_blob
 from fence_preview.delimit import process_content, DEFAULT_REGEXES, Node
 from fence_preview.latex import ART_PATH
 
@@ -48,8 +47,6 @@ class NvimImage:
         self.nvim = nvim
         self._handler = NvimHandler(nvim, level=logging.INFO)
 
-        self._sixel_cache: Dict[str, SixelCache] = {}
-
         # TODO: configurable
         self._regexes = DEFAULT_REGEXES
 
@@ -59,9 +56,9 @@ class NvimImage:
         nvim.loop.set_exception_handler(self.handle_exception)
         logging.getLogger().addHandler(self._handler)
 
-
     @pynvim.function("FenceUpdateContent", sync=True)
     def update_content(self, args: List[str]):
+        log.error(time.time())
         buffer: Buffer = self.nvim.current.buffer
         # This can be async from nvim...
         nodes = process_content(
@@ -73,7 +70,6 @@ class NvimImage:
 
         # ...but this can't be
         asyncio.create_task(self.draw_visible(nodes, force=True))
-
 
     async def draw_visible(self, nodes: List[Node], force=False):
         loop: asyncio.AbstractEventLoop = self.nvim.loop
@@ -97,13 +93,14 @@ class NvimImage:
         # this must be sync
         self.nvim.async_call(self.update_extmarks, updated_path_nodes)
 
-
     def update_extmarks(self, updated_path_nodes: List[Tuple[Node, None]]):
         # self.nvim.lua.clear_cache()
         self.nvim.lua.fence_preview.push_new_content(
-            [(*node.range, str(path)) for node, path in updated_path_nodes]
+            [
+                (node.range[0] - 1, node.range[1] - 1, str(path))
+                for node, path in updated_path_nodes
+            ]
         )
-
 
     def handle_exception(self, _: asyncio.AbstractEventLoop, context: Any) -> None:
         if (exception := context.get("exception")) is None or not isinstance(
