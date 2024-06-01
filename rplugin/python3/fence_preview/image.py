@@ -25,11 +25,13 @@ def prepare_blob(node: Node) -> Optional[Tuple[Node, Path]]:
     # if (cache := sixel_cache.get(node.content_id)):
     #     return node, cache.path
     image_path = generate_content(node)
+    if image_path is None:
+        return None
 
     return node, image_path
 
 
-def generate_content(node: Node) -> Path:
+def generate_content(node: Node) -> Optional[Path]:
     path = path_from_content(node)
     missing = not path.exists()
 
@@ -43,6 +45,8 @@ def generate_content(node: Node) -> Path:
         elif node.content_type == ContentType.GNUPLOT:
             new_path = generate_latex_from_gnuplot(node.content)
             generate_svg_from_latex(path, 1.0)
+        else:
+            return None
 
     # // rewrite path if ending as tex or gnuplot file
     if node.content_type == ContentType.FILE:

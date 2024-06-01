@@ -1,11 +1,13 @@
 import asyncio
 from collections import defaultdict
+from dataclasses import asdict
 import logging
 import sys
+from pathlib import Path
 import time
 import traceback
 
-from typing import Any, DefaultDict, Dict, List, Tuple
+from typing import Any, DefaultDict, Dict, List, Tuple, TYPE_CHECKING
 
 import pynvim
 from pynvim.api import Buffer
@@ -25,6 +27,12 @@ LOGGING_TO_NVIM_LEVELS: DefaultDict[int, int] = defaultdict(
         logging.CRITICAL: 4,
     },
 )
+
+
+def serialize_node(node: Node) -> dict:
+    dict_ = asdict(node)
+    dict_["content_type"] = node.content_type.name.lower()
+    return dict_
 
 
 class NvimHandler(logging.Handler):
@@ -65,6 +73,9 @@ class NvimImage:
             buffer[:],
             self._regexes,
         )
+        self.nvim.lua.fence_preview.set_nodes(
+            buffer.number, [serialize_node(node) for node in nodes]
+        )
         # TODO
         self.nvim.lua.sixel_extmarks.remove_all()
 
@@ -91,9 +102,16 @@ class NvimImage:
 
         # Second: clear old content from the cache
         # this must be sync
-        self.nvim.async_call(self.update_extmarks, updated_path_nodes)
+        if TYPE_CHECKING:
+            self.update_extmarks(
+                [path_node for path_node in updated_path_nodes if path_node is not None]
+            )
+        self.nvim.async_call(
+            self.update_extmarks,
+            [path_node for path_node in updated_path_nodes if path_node is not None],
+        )
 
-    def update_extmarks(self, updated_path_nodes: List[Tuple[Node, None]]):
+    def update_extmarks(self, updated_path_nodes: List[Tuple[Node, Path]]):
         # self.nvim.lua.clear_cache()
         self.nvim.lua.fence_preview.push_new_content(
             [

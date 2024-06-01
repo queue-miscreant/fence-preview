@@ -44,12 +44,7 @@ class ContentType(Enum):
     TEX = auto()
     LATEX = TEX
     FILE = auto()
-
-
-@dataclass
-class NodeDim:
-    height: int
-    crop: Optional[Tuple[int, int]]
+    PYTHON = auto()
 
 
 @dataclass
@@ -108,7 +103,7 @@ def process_content(
             new_lines.get(fence.start(0), 0),
             name=fence.group("name"),
             height=fence.group("height"),
-            content=fence.group("inner"),
+            content=fence.group("inner") or "",
         )
         for fence in matcher.fences_regex.finditer(content)
     ]
