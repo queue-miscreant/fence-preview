@@ -4,10 +4,9 @@ from dataclasses import asdict
 import logging
 import sys
 from pathlib import Path
-import time
 import traceback
 
-from typing import Any, DefaultDict, Dict, List, Tuple, TYPE_CHECKING
+from typing import Any, DefaultDict, Dict, List, Optional, Tuple, TYPE_CHECKING
 
 import pynvim
 from pynvim.api import Buffer
@@ -29,9 +28,9 @@ LOGGING_TO_NVIM_LEVELS: DefaultDict[int, int] = defaultdict(
 )
 
 
-def serialize_node(node: Node) -> dict:
+def serialize_node(node: Node) -> Dict:
     dict_ = asdict(node)
-    dict_["content_type"] = node.content_type.name.lower()
+    del dict_["content_type"]
     return dict_
 
 
@@ -58,6 +57,7 @@ class NvimImage:
         # TODO: configurable
         self._regexes = DEFAULT_REGEXES
 
+        self._last_nodes: Optional[List[Node]] = None
         if not ART_PATH.exists():
             ART_PATH.mkdir()
 
@@ -66,13 +66,16 @@ class NvimImage:
 
     @pynvim.function("FenceUpdateContent", sync=True)
     def update_content(self, args: List[str]):
-        log.error(time.time())
         buffer: Buffer = self.nvim.current.buffer
         # This can be async from nvim...
         nodes = process_content(
             buffer[:],
             self._regexes,
         )
+        if nodes == self._last_nodes:
+            return
+        self._last_nodes = nodes
+
         self.nvim.lua.fence_preview.set_nodes(
             buffer.number, [serialize_node(node) for node in nodes]
         )

@@ -39,12 +39,12 @@ def hash_content(content: str) -> str:
 
 
 class ContentType(Enum):
-    MATH = auto()
-    GNUPLOT = auto()
-    TEX = auto()
+    MATH = "math"  # TODO: needs syntax
+    GNUPLOT = "gnuplot"
+    TEX = "tex"
     LATEX = TEX
-    FILE = auto()
-    PYTHON = auto()
+    FILE = ""  # Unique from None
+    OTHER = None
 
 
 @dataclass
@@ -53,22 +53,28 @@ class Node:
     range: Tuple[int, int]
     content: str
     content_type: ContentType
+    filetype: Optional[str]
 
 
-def make_math_content(
+def make_fenced_content(
     line_number: int, name: str, height: Optional[str], content: str
 ) -> Optional[Node]:
     line_count = int(height) if height is not None else content.count("\n") + 2
 
     try:
-        return Node(
-            content_id=hash_content("\n".join(content)),
-            range=(line_number, line_number + line_count - 1),
-            content=content,
-            content_type=ContentType[name.upper()],
-        )
+        content_type = ContentType[name.upper()]
+        filetype = content_type.value
     except KeyError:
-        return None
+        content_type = ContentType.OTHER
+        filetype = name
+
+    return Node(
+        content_id=hash_content(content),
+        range=(line_number, line_number + line_count - 1),
+        content=content,
+        content_type=content_type,
+        filetype=filetype,
+    )
 
 
 def make_file_content(
@@ -76,10 +82,11 @@ def make_file_content(
 ) -> Optional[Node]:
     try:
         return Node(
-            content_id=hash_content("\n".join(filepath)),
+            content_id=hash_content(filepath),
             range=(line_number + 1, line_number + line_count),
             content=filepath,
             content_type=ContentType.FILE,
+            filetype=None,
         )
     except (AssertionError, ValueError):
         return None
@@ -93,13 +100,18 @@ def process_content(
     content = "\n" + "\n".join(buffer_lines)
 
     # put new lines into a btree map for later
-    new_lines = {1: 1}
+    new_lines = {
+        line.start(): line_number + 1
+        for line_number, line in enumerate(matcher.newlines.finditer(content))
+    }
+    new_lines[1] = 1
+
     for line_number, line in enumerate(matcher.newlines.finditer(content)):
         start = line.start()
         new_lines[start] = line_number + 1
 
     fences = [
-        make_math_content(
+        make_fenced_content(
             new_lines.get(fence.start(0), 0),
             name=fence.group("name"),
             height=fence.group("height"),
