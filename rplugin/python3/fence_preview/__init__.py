@@ -16,7 +16,6 @@ from typing import (
 )
 
 import pynvim
-from pynvim.api import Buffer
 from fence_preview.image import generate_image, ParsingNode
 from fence_preview.latex import ART_PATH
 
@@ -54,7 +53,6 @@ class NvimImage:
         self.nvim = nvim
         self._handler = NvimHandler(nvim, level=logging.INFO)
 
-        self._last_nodes: Optional[List[ParsingNode]] = None
         if not ART_PATH.exists():
             ART_PATH.mkdir()
 
@@ -65,12 +63,6 @@ class NvimImage:
     def async_gen(self, args: List[Any]):
         buffer = args[0]
         nodes = [ParsingNode(**arg) for arg in args[1]]
-        # This can be async from nvim...
-        if nodes == self._last_nodes:
-            return
-        self._last_nodes = nodes
-
-        # ...but this can't be
         asyncio.create_task(self.generate_images(buffer, nodes))
 
     async def generate_images(self, buffer: int, nodes: List[ParsingNode]):
@@ -86,7 +78,7 @@ class NvimImage:
 
         self.nvim.async_call(self.deliver_paths, buffer, zip(nodes, updated_path_nodes))
 
-    def deliver_paths(self, buffer: int, node_paths: Iterable[Tuple[ParsingNode, Path]]):
+    def deliver_paths(self, buffer: int, node_paths: Iterable[Tuple[ParsingNode, Optional[Path]]]):
         for node, path in node_paths:
             if path is None:
                 continue
