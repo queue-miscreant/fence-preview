@@ -1,9 +1,9 @@
+from binascii import hexlify
+from hashlib import sha256
 import logging
 from pathlib import Path
 import shutil
 import subprocess
-
-from fence_preview.delimit import hash_content, Node, ContentType
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.ERROR)
@@ -25,11 +25,8 @@ MATH_END = """
 """
 
 
-def path_from_content(node: Node) -> Path:
-    content_hash = node.content_id
-    if node.content_type == ContentType.FILE:
-        return Path(node.content).expanduser()
-    return Path(ART_PATH, content_hash).with_suffix(".svg")
+def hash_content(content: str) -> str:
+    return hexlify(sha256(content.encode()).digest()).decode()
 
 
 # Parse an equation with the given zoom

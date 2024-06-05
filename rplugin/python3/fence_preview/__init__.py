@@ -6,12 +6,18 @@ import sys
 from pathlib import Path
 import traceback
 
-from typing import Any, DefaultDict, Dict, List, Iterable, Optional, Tuple, TYPE_CHECKING
+from typing import (
+    Any,
+    DefaultDict,
+    List,
+    Iterable,
+    Optional,
+    Tuple,
+)
 
 import pynvim
 from pynvim.api import Buffer
-from fence_preview.image import generate_image, generate_content, prepare_blob, ParsingNode
-from fence_preview.delimit import process_content, DEFAULT_REGEXES, Node
+from fence_preview.image import generate_image, ParsingNode
 from fence_preview.latex import ART_PATH
 
 log = logging.getLogger(__name__)
@@ -26,12 +32,6 @@ LOGGING_TO_NVIM_LEVELS: DefaultDict[int, int] = defaultdict(
         logging.CRITICAL: 4,
     },
 )
-
-
-def serialize_node(node: Node) -> Dict:
-    dict_ = asdict(node)
-    del dict_["content_type"]
-    return dict_
 
 
 class NvimHandler(logging.Handler):
@@ -54,36 +54,12 @@ class NvimImage:
         self.nvim = nvim
         self._handler = NvimHandler(nvim, level=logging.INFO)
 
-        # TODO: configurable
-        self._regexes = DEFAULT_REGEXES
-
         self._last_nodes: Optional[List[ParsingNode]] = None
         if not ART_PATH.exists():
             ART_PATH.mkdir()
 
         nvim.loop.set_exception_handler(self.handle_exception)
         logging.getLogger().addHandler(self._handler)
-
-    @pynvim.function("FenceUpdateContent", sync=True)
-    def update_content(self, args: List[str]):
-        buffer: Buffer = self.nvim.current.buffer
-        # This can be async from nvim...
-        nodes = process_content(
-            buffer[:],
-            self._regexes,
-        )
-        if nodes == self._last_nodes:
-            return
-        self._last_nodes = nodes
-
-        self.nvim.lua.fence_preview.set_nodes(
-            buffer.number, [serialize_node(node) for node in nodes]
-        )
-        # TODO
-        self.nvim.lua.sixel_extmarks.remove_all()
-
-        # ...but this can't be
-        asyncio.create_task(self.draw_visible(nodes, force=True))
 
     @pynvim.function("FenceAsyncGen", sync=True)
     def async_gen(self, args: List[Any]):
@@ -108,55 +84,15 @@ class NvimImage:
             )
         )
 
-        self.nvim.async_call(
-            self.deliver_paths,
-            buffer,
-            zip(nodes, updated_path_nodes)
-        )
+        self.nvim.async_call(self.deliver_paths, buffer, zip(nodes, updated_path_nodes))
 
-    def deliver_paths(self, buffer: int, node_paths: Iterable[Tuple[Node, Path]]):
+    def deliver_paths(self, buffer: int, node_paths: Iterable[Tuple[ParsingNode, Path]]):
         for node, path in node_paths:
             if path is None:
                 continue
-            self.nvim.lua.fence_preview.try_draw_extmark(buffer, str(path), asdict(node))
-
-    async def draw_visible(self, nodes: List[Node], force=False):
-        loop: asyncio.AbstractEventLoop = self.nvim.loop
-        # Start: we know each node and its content hash
-
-        # First: If the content has already been generated, update the size of the extmarks
-        # TODO
-
-        # Second: Generate new content for each new content id
-
-        # start processing new sixel content in another thread
-        updated_path_nodes = await asyncio.gather(
-            *(
-                # TODO
-                loop.run_in_executor(None, prepare_blob, node)
-                for node in nodes
+            self.nvim.lua.fence_preview.try_draw_extmark(
+                buffer, str(path), asdict(node)
             )
-        )
-
-        # Second: clear old content from the cache
-        # this must be sync
-        if TYPE_CHECKING:
-            self.update_extmarks(
-                [path_node for path_node in updated_path_nodes if path_node is not None]
-            )
-        self.nvim.async_call(
-            self.update_extmarks,
-            [path_node for path_node in updated_path_nodes if path_node is not None],
-        )
-
-    def update_extmarks(self, updated_path_nodes: List[Tuple[Node, Path]]):
-        # self.nvim.lua.clear_cache()
-        self.nvim.lua.fence_preview.push_new_content(
-            [
-                (node.range[0] - 1, node.range[1] - 1, str(path))
-                for node, path in updated_path_nodes
-            ]
-        )
 
     def handle_exception(self, _: asyncio.AbstractEventLoop, context: Any) -> None:
         if (exception := context.get("exception")) is None or not isinstance(

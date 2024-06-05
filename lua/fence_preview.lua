@@ -6,30 +6,17 @@
 
 ---@class node
 ---@field content string
----@field content_id string
 ---@field filetype string
 ---@field range [integer, integer]
 
 ---@diagnostic disable-next-line
 fence_preview = {
   ---@type node[]
-  node_cache = {}
+  node_cache = {},
+  ---@type parsing_node[]
+  last_nodes = {}
 }
 
----@param updated_range_paths [integer, integer, string][]
-function fence_preview.push_new_content(updated_range_paths)
-  sixel_extmarks.disable_drawing()
-  sixel_extmarks.remove_all()
-  for i, range_path in ipairs(updated_range_paths) do
-    sixel_extmarks.create(unpack(range_path)) ---@diagnostic disable-line
-  end
-  sixel_extmarks.enable_drawing()
-end
-
--- TODO: this is buffer-local
-function fence_preview.set_nodes(buffer, nodes)
-  fence_preview.node_cache = nodes
-end
 
 ---@param buffer integer
 ---@param path string
@@ -42,16 +29,6 @@ function fence_preview.try_draw_extmark(buffer, path, node)
 end
 
 
----@param node parsing_node
----@return parsing_node
-local function cook_nodes(node)
-  if node.type == "file" then
-    node.start = node.start + 1
-  end
-
-  return node
-end
-
 function fence_preview.bind()
   vim.cmd [[
     augroup ImageExtmarks
@@ -63,20 +40,57 @@ function fence_preview.bind()
     { "TextChanged", "InsertLeave" },
     {
       buffer = 0,
-      callback = function(args)
+      callback = function()
         ---@type integer
         local current_buffer = vim.api.nvim_get_current_buf()
         ---@type string[]
         local current_lines = vim.api.nvim_buf_get_lines(0, 0, -1, 0)
 
-        local raw_nodes = fence_preview.generate_nodes(current_lines)
+        local nodes = fence_preview.generate_nodes(current_lines)
+
+        -- Cursor
+        vim.b.fence_preview_inside_node = nil
+        local cursor_line = vim.fn.line(".")
+        for _, node in ipairs(nodes) do
+          -- Cursor is inside this node
+          if (node.start < cursor_line and cursor_line < node.end_) then
+            vim.b.fence_preview_inside_node = node.id
+            break
+          end
+        end
 
         -- Push external content to Python for running
-        -- TODO: do not push content if the cursor is inside a node
+        sixel_extmarks.remove_all()
         vim.fn.FenceAsyncGen(
           current_buffer,
-          vim.tbl_map(cook_nodes, raw_nodes)
+          vim.tbl_filter(
+            function(node) return node.id ~= vim.b.fence_preview_inside_node end,
+            nodes
+          )
         )
+
+        fence_preview.last_nodes = nodes
+      end
+    }
+  )
+
+  -- Push content in fences if the cursor has moved out of the way
+  vim.api.nvim_create_autocmd(
+    { "CursorMoved" },
+    {
+      buffer = 0,
+      callback = function()
+        if vim.b.fence_preview_inside_node == nil then return end
+
+        vim.fn.FenceAsyncGen(
+          vim.api.nvim_get_current_buf(),
+          vim.tbl_filter(
+            function(node) return node.id == vim.b.fence_preview_inside_node end,
+            fence_preview.last_nodes
+          )
+        )
+
+        vim.b.fence_preview_inside_node = nil
       end
     }
   )
@@ -199,35 +213,53 @@ end
 ---@field start integer
 ---@field end_? integer
 ---@field content? string[]
+---@field id? integer
+
+---@param node parsing_node
+---@return parsing_node
+local function cook_node(node)
+  if node.type == "file" then
+    node.start = node.start + 1
+  end
+
+  return node
+end
 
 ---@param lines string[]
 ---@return parsing_node[]
 function fence_preview.generate_nodes(lines)
-
+  ---@type parsing_node[]
   local nodes = {}
   ---@type parsing_node|nil
   local current_node = nil
   local line_for_file = false
 
   for line_number, line in pairs(lines) do
+    -- Cut off and push the image node if the line is not empty
     if line_for_file and line ~= "" then
-      line_for_file = false
+      assert(current_node ~= nil)
       current_node.end_ = line_number - 1
-      table.insert(nodes, current_node)
+      current_node.id = #nodes + 1
+      table.insert(nodes, cook_node(current_node))
+
       current_node = nil
+      line_for_file = false
     end
 
     -- Content like this: "```[params]". Used to delimit fences
     local fence_parameters = line:match("^%s*```([^`]*)")
     if fence_parameters ~= nil then
+      -- Fence beginning
       if current_node == nil then
         current_node = {
           type = "fence",
           parameters = fence_parameters,
           start = line_number
         }
+      -- Fence ending, push node
       else
         current_node.end_ = line_number
+        current_node.id = #nodes + 1
         current_node.content= {}
         if current_node.start + 1 <= current_node.end_ then
           table.move(
@@ -238,13 +270,14 @@ function fence_preview.generate_nodes(lines)
             current_node.content
           )
         end
-        table.insert(nodes, current_node)
+        table.insert(nodes, cook_node(current_node))
         current_node = nil
       end
       goto next
     end
 
     -- Content [like this](params)
+    -- `params` should contain filename
     local file_parameters = line:match("^!%[[^%]]*%]%(([^%)]*)%)$")
     if file_parameters ~= nil then
       current_node = {

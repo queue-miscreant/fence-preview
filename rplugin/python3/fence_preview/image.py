@@ -2,14 +2,13 @@ from dataclasses import dataclass
 import logging
 from pathlib import Path
 
-from typing import List, Literal, Optional, Tuple
+from typing import List, Literal, Optional
 
 from wand.image import Image
 
-from fence_preview.delimit import Node, ContentType, hash_content
 from fence_preview.latex import (
     ART_PATH,
-    path_from_content,
+    hash_content,
     parse_equation,
     parse_latex,
     parse_latex_from_file,
@@ -28,6 +27,7 @@ class ParsingNode:
     parameters: str
     start: int
     end_: int
+    id: int
     content: Optional[List[str]] = None
 
 
@@ -37,49 +37,6 @@ class NodeParams:
     height: Optional[int]
     others: List[str]
 
-
-def prepare_blob(node: Node) -> Optional[Tuple[Node, Path]]:
-    # if (cache := sixel_cache.get(node.content_id)):
-    #     return node, cache.path
-    image_path = generate_content(node)
-    if image_path is None:
-        return None
-
-    return node, image_path
-
-
-def generate_content(node: Node) -> Optional[Path]:
-    path = path_from_content(node)
-    missing = not path.exists()
-
-    if missing:
-        if node.content_type == ContentType.FILE:
-            raise FileNotFoundError(f"Could not find file {path}!")
-        if node.content_type == ContentType.MATH:
-            path = parse_equation(node.content, path, 1.0)
-        elif node.content_type == ContentType.TEX:
-            path = parse_latex(node.content)
-        elif node.content_type == ContentType.GNUPLOT:
-            new_path = generate_latex_from_gnuplot(node.content)
-            generate_svg_from_latex(path, 1.0)
-        else:
-            return None
-
-    # // rewrite path if ending as tex or gnuplot file
-    if node.content_type == ContentType.FILE:
-        if path.suffix == ".tex":
-            path = parse_latex_from_file(path)
-        elif path.suffix == ".plt":
-            new_path = generate_latex_from_gnuplot_file(path)
-            path = new_path.with_suffix(".svg")
-
-    # Rasterize svg
-    if path.suffix == ".svg":
-        with Image(resolution=(600.0, 600.0), filename=path) as outfile:
-            outfile.save(filename=path.with_suffix(".png"))
-            path = path.with_suffix(".png")
-
-    return path
 
 def parse_node_parameters(params: str) -> Optional[NodeParams]:
     filetype = None
@@ -107,11 +64,7 @@ def parse_node_parameters(params: str) -> Optional[NodeParams]:
     if filetype is None:
         return None
 
-    return NodeParams(
-        filetype=filetype,
-        height=height,
-        others=others
-    )
+    return NodeParams(filetype=filetype, height=height, others=others)
 
 
 def run_fence(node: ParsingNode) -> Optional[Path]:
@@ -139,6 +92,7 @@ def run_fence(node: ParsingNode) -> Optional[Path]:
 
     return path
 
+
 def gen_file(node: ParsingNode) -> Path:
     path = Path(node.parameters).expanduser()
 
@@ -151,6 +105,7 @@ def gen_file(node: ParsingNode) -> Path:
         path = new_path.with_suffix(".svg")
 
     return path
+
 
 def generate_image(node: ParsingNode) -> Optional[Path]:
     # TODO: exceptions
