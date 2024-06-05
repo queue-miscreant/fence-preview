@@ -6,6 +6,7 @@ import subprocess
 from fence_preview.delimit import hash_content, Node, ContentType
 
 log = logging.getLogger(__name__)
+log.setLevel(logging.ERROR)
 
 ART_PATH = Path("/tmp/nvim_arts/")
 

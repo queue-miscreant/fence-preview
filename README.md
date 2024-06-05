@@ -68,16 +68,19 @@ Plugin highlights
 TODOs
 -----
 
-- Re-implement caching
-- Run diffs between buffer changes
-    - Only changes extmarks which correspond to changed content
-- LaTeX update rendering currently forces all images to be available first
 - Regenerate LaTeX only when cursor is outside fence (and extmark can be re-rendered)
+- Identify fences by position in file
+  - The cursor can be detected as "in fence 1, 2, 3..." 
+- Open fence content in split
+    - "Phantom" preamble for "math" (TeX) content
+    - [-] BufWrite triggers update to fence and shows preview in parent buffer
+    - Height can be controlled by a comment in the split 
+- Forced heights use folds outside of fences
+    - Open fold by entering split
+    - This requires extra logic for extmark height!
 - Default LaTeX display is not eye-searing
     - Simple: white text on black
     - Difficult: configurable, white text on transparent
     - Hide content with highlights
     - Highlight removed when cursor crosses fence
-- Sometimes multiple extmarks get added because of asynchronicity
-    - Buffering?
 - Errors along the LaTeX toolchain render as extmark errors
