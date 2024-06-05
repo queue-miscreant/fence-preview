@@ -6,11 +6,11 @@ import sys
 from pathlib import Path
 import traceback
 
-from typing import Any, DefaultDict, Dict, List, Optional, Tuple, TYPE_CHECKING
+from typing import Any, DefaultDict, Dict, List, Iterable, Optional, Tuple, TYPE_CHECKING
 
 import pynvim
 from pynvim.api import Buffer
-from fence_preview.image import prepare_blob
+from fence_preview.image import generate_image, generate_content, prepare_blob, ParsingNode
 from fence_preview.delimit import process_content, DEFAULT_REGEXES, Node
 from fence_preview.latex import ART_PATH
 
@@ -57,7 +57,7 @@ class NvimImage:
         # TODO: configurable
         self._regexes = DEFAULT_REGEXES
 
-        self._last_nodes: Optional[List[Node]] = None
+        self._last_nodes: Optional[List[ParsingNode]] = None
         if not ART_PATH.exists():
             ART_PATH.mkdir()
 
@@ -84,6 +84,41 @@ class NvimImage:
 
         # ...but this can't be
         asyncio.create_task(self.draw_visible(nodes, force=True))
+
+    @pynvim.function("FenceAsyncGen", sync=True)
+    def async_gen(self, args: List[Any]):
+        buffer = args[0]
+        nodes = [ParsingNode(**arg) for arg in args[1]]
+        # This can be async from nvim...
+        if nodes == self._last_nodes:
+            return
+        self._last_nodes = nodes
+
+        # ...but this can't be
+        asyncio.create_task(self.generate_images(buffer, nodes))
+
+    async def generate_images(self, buffer: int, nodes: List[ParsingNode]):
+        loop: asyncio.AbstractEventLoop = self.nvim.loop
+
+        updated_path_nodes = await asyncio.gather(
+            *(
+                # TODO
+                loop.run_in_executor(None, generate_image, node)
+                for node in nodes
+            )
+        )
+
+        self.nvim.async_call(
+            self.deliver_paths,
+            buffer,
+            zip(nodes, updated_path_nodes)
+        )
+
+    def deliver_paths(self, buffer: int, node_paths: Iterable[Tuple[Node, Path]]):
+        for node, path in node_paths:
+            if path is None:
+                continue
+            self.nvim.lua.fence_preview.try_draw_extmark(buffer, str(path), asdict(node))
 
     async def draw_visible(self, nodes: List[Node], force=False):
         loop: asyncio.AbstractEventLoop = self.nvim.loop

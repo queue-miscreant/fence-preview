@@ -34,17 +34,16 @@ def path_from_content(node: Node) -> Path:
 
 # Parse an equation with the given zoom
 def parse_equation(
-    node: Node,
+    content: str,
+    path: Path,
     zoom: float,
 ) -> Path:
-    path = Path(ART_PATH, node.content_id).with_suffix(".svg")
-
     # create a new tex file containing the equation
     tex_path = path.with_suffix(".tex")
     if not tex_path.exists():
         with open(tex_path, "w") as file:
             file.writelines(
-                [MATH_START, node.content.strip(), MATH_END]
+                [MATH_START, content, MATH_END]
             )
 
     return generate_svg_from_latex(path, zoom)

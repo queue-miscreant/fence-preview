@@ -73,7 +73,6 @@ TODOs
   - The cursor can be detected as "in fence 1, 2, 3..." 
 - Open fence content in split
     - "Phantom" preamble for "math" (TeX) content
-    - [-] BufWrite triggers update to fence and shows preview in parent buffer
     - Height can be controlled by a comment in the split 
 - Forced heights use folds outside of fences
     - Open fold by entering split
