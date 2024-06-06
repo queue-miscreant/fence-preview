@@ -167,6 +167,27 @@ def generate_latex_from_gnuplot_file(path: Path) -> Path:
     return generate_svg_from_latex(path, 1.0)
 
 
+def generate_latex_from_python(
+    content: str,
+    path: Path,
+    zoom: float,
+) -> Path:
+    """Parse a latex content and convert it to a SVG file"""
+    cmd = subprocess.Popen(
+        ["python", "-"],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        cwd=ART_PATH,
+    )
+
+    stdout, stderr = cmd.communicate(content.encode())
+
+    # log.error("%s %s", stdout, stderr)
+
+    return parse_equation(stdout.decode(), path, zoom)
+
+
 def parse_latex(
     content: str,
 ) -> Path:

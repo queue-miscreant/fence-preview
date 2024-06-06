@@ -2,7 +2,7 @@ from dataclasses import dataclass
 import logging
 from pathlib import Path
 
-from typing import List, Literal, Optional
+from typing import List, Literal, Optional, Tuple
 
 from wand.image import Image
 
@@ -15,6 +15,7 @@ from fence_preview.latex import (
     generate_svg_from_latex,
     generate_latex_from_gnuplot,
     generate_latex_from_gnuplot_file,
+    generate_latex_from_python,
 )
 
 log = logging.getLogger(__name__)
@@ -24,18 +25,19 @@ log.setLevel(logging.DEBUG)
 @dataclass
 class ParsingNode:
     type: Literal["fence", "file"]
-    parameters: str
-    start: int
-    end_: int
+    range: Tuple[int, int]
     id: int
+    hash: str
+    params: Optional[dict] = None
+    filename: Optional[str] = None
     content: Optional[List[str]] = None
 
 
 @dataclass
 class NodeParams:
     filetype: str
-    height: Optional[int]
     others: List[str]
+    height: Optional[int] = None
 
 
 def parse_node_parameters(params: str) -> Optional[NodeParams]:
@@ -68,25 +70,28 @@ def parse_node_parameters(params: str) -> Optional[NodeParams]:
 
 
 def run_fence(node: ParsingNode) -> Optional[Path]:
+    assert node.params is not None
     if node.content is None:
         return None
 
-    stripped_content = "\n".join(node.content).strip()
-    content_hash = hash_content(stripped_content)
+    content = "\n".join(node.content)
+    content_hash = node.hash
     path = (ART_PATH / content_hash).with_suffix(".svg")
 
     if not path.exists():
-        params = parse_node_parameters(node.parameters)
+        params = NodeParams(**node.params)
         if params is None:
             return None
 
         if params.filetype == "math":
-            path = parse_equation(stripped_content, path, 1.0)
+            path = parse_equation(content, path, 1.0)
         elif params.filetype == "tex":
-            path = parse_latex(stripped_content)
+            path = parse_latex(content)
         elif params.filetype == "gnuplot":
-            generate_latex_from_gnuplot(stripped_content)
-            generate_svg_from_latex(path, 1.0)
+            new_path = generate_latex_from_gnuplot(content)
+            generate_svg_from_latex(new_path, 1.0)
+        elif params.filetype == "python" and "latex" in params.others:
+            generate_latex_from_python(content, path, 1.0)
         else:
             return None
 
@@ -94,9 +99,8 @@ def run_fence(node: ParsingNode) -> Optional[Path]:
 
 
 def gen_file(node: ParsingNode) -> Path:
-    path = Path(node.parameters).expanduser()
-
-    log.error(node)
+    assert node.filename is not None
+    path = Path(node.filename).expanduser()
 
     if path.suffix == ".tex":
         path = parse_latex_from_file(path)

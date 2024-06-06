@@ -20,16 +20,17 @@ end
 fence_preview = {
   ---@type old_node[]
   node_cache = {},
-  ---@type parsing_node[]
+  ---@type node[]
   last_nodes = {}
 }
 
+vim.api.nvim_create_augroup("FencePreview", { clear = false })
 
 ---@return node|nil
 local function cursor_in_node(nodes, cursor_line)
   for _, node in ipairs(fence_preview.last_nodes) do
     -- Cursor is inside this node
-    if (node.start < cursor_line and cursor_line < node.end_) then
+    if (node.range[1] < cursor_line and cursor_line < node.range[2]) then
       return node
     end
   end
@@ -41,15 +42,34 @@ end
 ---@param buffer integer
 ---@param path string
 ---@param node node
-function fence_preview.try_draw_extmark(buffer, path, node)
-  -- TODO: the node received should be compared against nodes in the current buffer
+function fence_preview.try_draw_extmark(buffer, path, node, draw_number)
   vim.api.nvim_buf_call(buffer, function()
-    sixel_extmarks.create(node.start - 1, node.end_ - 1, path)
+    if vim.b.draw_number ~= draw_number then return end
+    -- TODO: the node received should be compared against nodes in the current buffer
+    for _, last_node in ipairs(fence_preview.last_nodes) do
+      -- Cursor is inside this node
+      if (
+        node.id == last_node.id and
+        node.extmark_id ~= nil
+      ) then
+        if last_node.hash == node.hash then
+          sixel_extmarks.change_content(last_node.extmark_id, path)
+          sixel_extmarks.move(last_node.extmark_id, node.range[1] - 1, node.range[2] - 1, path)
+          return
+        else
+          sixel_extmarks.remove(node.extmark_id)
+          break
+        end
+      end
+    end
+
+    node.extmark_id = sixel_extmarks.create(node.range[1] - 1, node.range[2] - 1, path)
   end)
 end
 
 
 function fence_preview.reload()
+  vim.b.draw_number = (vim.b.draw_number or 0) + 1
   ---@type integer
   local current_buffer = vim.api.nvim_get_current_buf()
   ---@type string[]
@@ -71,7 +91,8 @@ function fence_preview.reload()
     vim.tbl_filter(
       function(node) return node.id ~= vim.b.fence_preview_inside_node end,
       nodes
-    )
+    ),
+    vim.b.draw_number
   )
 
   fence_preview.last_nodes = nodes
@@ -79,6 +100,8 @@ end
 
 
 function fence_preview.bind()
+  if vim.b.fence_preview_bound_autocmds then return end
+
   vim.cmd [[
     augroup ImageExtmarks
       autocmd! TextChanged,InsertLeave
@@ -89,6 +112,7 @@ function fence_preview.bind()
   vim.api.nvim_create_autocmd(
     { "TextChanged", "InsertLeave" },
     {
+      group = "FencePreview",
       buffer = 0,
       callback = function() fence_preview.reload() end
     }
@@ -98,6 +122,7 @@ function fence_preview.bind()
   vim.api.nvim_create_autocmd(
     { "CursorMoved" },
     {
+      group = "FencePreview",
       buffer = 0,
       callback = function()
         if vim.b.fence_preview_inside_node == nil then return end
@@ -107,7 +132,8 @@ function fence_preview.bind()
           vim.tbl_filter(
             function(node) return node.id == vim.b.fence_preview_inside_node end,
             fence_preview.last_nodes
-          )
+          ),
+          vim.b.draw_number
         )
 
         vim.b.fence_preview_inside_node = nil
@@ -120,11 +146,13 @@ function fence_preview.bind()
     "OpenFence",
     function()
       if vim.fn.mode():sub(1, 1) ~= "n" then return end
+
       local node = cursor_in_node(fence_preview.last_nodes, vim.fn.line("."))
       if node == nil then return end
+      if node.type == "file" then return end
 
       -- TODO: cook the node into the proper format
-      side_window.enter_window(node)
+      side_window.enter_window(node) ---@diagnostic disable-line
     end,
     {}
   )
@@ -135,4 +163,6 @@ function fence_preview.bind()
     function() fence_preview.reload() end,
     {}
   )
+
+  vim.b.fence_preview_bound_autocmds = true
 end

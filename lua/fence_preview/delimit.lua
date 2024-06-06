@@ -1,6 +1,7 @@
 -- delimit.lua
 --
 -- Functions for assembling a list of nodes (fences or files) for current buffer content.
+-- This should probably get rewritten for treesitter, but patterns are fine for the moment
 
 local delimit = {}
 
@@ -11,18 +12,105 @@ local delimit = {}
 ---@field end_? integer
 ---@field content? string[]
 ---@field id? integer
+---@field hash? string
 
----@alias node parsing_node
+---@class fence_params
+---@field filetype string
+---@field height? integer
+---@field content string[]
+---@field others string[]
 
----@param node parsing_node
----@return node
-local function cook_node(node)
-  if node.type == "file" then
-    node.start = node.start + 1
+---@class fence_node
+---@field type "fence"
+---@field content string[]
+---@field params fence_params
+---@field range [integer, integer]
+---@field id integer
+---@field hash string
+---@field extmark_id? integer
+
+---@class file_node
+---@field type "file"
+---@field filename string
+---@field range [integer, integer]
+---@field id integer
+---@field hash string
+---@field extmark_id? integer
+
+---@alias node fence_node|file_node
+
+
+---@param params string
+---@return fence_params|nil
+local function parse_node_parameters(params)
+  local filetype = nil
+  local height = nil
+
+  ---@type string[]
+  local others = {}
+
+  for i, param in ipairs(vim.split(params, ",")) do
+    ---@type string
+    local trimmed_param = vim.trim(param)
+
+    if i == 1 then
+      filetype = trimmed_param
+    elseif trimmed_param:find("height") == 1 then
+      ---@type string[]
+      local equal = vim.split(trimmed_param, "=")
+
+      if #equal > 1 then
+        local temp_height = tonumber(equal[2])
+        if temp_height ~= nil then
+          height = temp_height
+        end
+      end
+    else
+      table.insert(others, trimmed_param)
+    end
   end
 
-  return node
+  if filetype == nil then
+    return nil
+  end
+
+  return {
+    filetype = filetype,
+    height = height,
+    others = others
+  }
 end
+
+
+---@param node parsing_node
+---@return node|nil
+local function cook_node(node)
+  if node.type == "file" then
+    ---@type file_node
+    return {
+      type = "file",
+      filename = node.parameters,
+      range = {node.start + 1, node.end_},
+      id = node.id,
+      hash = vim.fn.sha256(node.parameters)
+    }
+  else
+    local parsed = parse_node_parameters(node.parameters)
+    if parsed == nil then return nil end
+    if #node.content == 0 then return nil end
+
+    ---@type fence_node
+    return {
+      type = "fence",
+      params = parsed,
+      content = node.content,
+      range = {node.start, node.end_},
+      id = node.id,
+      hash = vim.fn.sha256(vim.trim(table.concat(node.content, "\n")))
+    }
+  end
+end
+
 
 ---@param lines string[]
 ---@return node[]
@@ -39,7 +127,11 @@ function delimit.generate_nodes(lines)
       assert(current_node ~= nil)
       current_node.end_ = line_number - 1
       current_node.id = #nodes + 1
-      table.insert(nodes, cook_node(current_node))
+
+      local cooked = cook_node(current_node)
+      if cooked ~= nil then
+        table.insert(nodes, cooked)
+      end
 
       current_node = nil
       line_for_file = false
@@ -69,7 +161,12 @@ function delimit.generate_nodes(lines)
             current_node.content
           )
         end
-        table.insert(nodes, cook_node(current_node))
+
+        local cooked = cook_node(current_node)
+        if cooked ~= nil then
+          table.insert(nodes, cooked)
+        end
+
         current_node = nil
       end
       goto next

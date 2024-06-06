@@ -6,7 +6,7 @@
 local side_window = {}
 
 
----@param node old_node
+---@param node fence_node
 function side_window.enter_window(node)
   local current_buffer = vim.api.nvim_get_current_buf()
   local current_window = vim.api.nvim_get_current_win()
@@ -23,9 +23,9 @@ function side_window.enter_window(node)
     0,
     -1,
     0,
-    vim.split(node.content:sub(0, -2), "\n")
+    node.content
   )
-  vim.api.nvim_set_option_value("filetype", node.filetype, { buf = new_buffer })
+  vim.api.nvim_set_option_value("filetype", node.params.filetype, { buf = new_buffer })
   vim.api.nvim_set_option_value("buftype", nil, { buf = new_buffer })
   -- Set a temporary filename for linting plugins that depend on that
   vim.api.nvim_buf_set_name(new_buffer, vim.fn.tempname())
