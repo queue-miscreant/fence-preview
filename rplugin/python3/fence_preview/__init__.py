@@ -68,6 +68,7 @@ class NvimImage:
         nodes = [ParsingNode(**arg) for arg in args[1]]
         draw_number: int = args[2]
 
+        # TODO: _Very_ naive. Individual nodes will overwrite cache!
         if self._last_nodes and self._last_files:
             if nodes == self._last_nodes:
                 self.deliver_paths(buffer, zip(self._last_nodes, self._last_files), draw_number)

@@ -3,6 +3,8 @@
 -- Functions for opening up a split for editing fence content, while previewing
 -- the result in the main buffer.
 
+local delimit = require "fence_preview/delimit"
+
 local side_window = {}
 
 
@@ -43,15 +45,21 @@ function side_window.enter_window(node)
   vim.api.nvim_create_autocmd({"BufWrite"}, {
     buffer = new_buffer,
     callback = function()
+      delimit.set_node_content(node, vim.api.nvim_buf_get_lines(new_buffer, 0, -1, 0))
       vim.api.nvim_buf_set_lines(
         current_buffer,
         node.range[1],
         node.range[2] - 1,
         0,
-        vim.api.nvim_buf_get_lines(new_buffer, 0, -1, 0)
+        node.content
       )
 
-      -- TODO: scroll parent buffer and update extmarks
+      vim.b.draw_number = (vim.b.draw_number or 0) + 1
+      vim.fn.FenceAsyncGen(
+        current_buffer,
+        { node },
+        vim.b.draw_number
+      )
 
       -- Write parent buffer
       vim.api.nvim_buf_call(current_buffer, function()
@@ -70,7 +78,7 @@ function side_window.enter_window(node)
       local offset = node.range[1] + num_lines + 1 - node.range[2]
       node.range[2] = node.range[2] + offset
 
-      for _, other_node in pairs(fence_preview.node_cache) do
+      for _, other_node in pairs(fence_preview.last_nodes) do
         if other_node.range[1] > node.range[2] then
           other_node.range[1] = other_node.range[1] + offset
           other_node.range[2] = other_node.range[2] + offset

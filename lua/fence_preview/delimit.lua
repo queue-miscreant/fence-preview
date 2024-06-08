@@ -114,6 +114,14 @@ local function cook_node(node)
 end
 
 
+---@param node node
+---@param content string[]
+function delimit.set_node_content(node, content)
+  node.content = content
+  node.hash = vim.fn.sha256(vim.trim(table.concat(content, "\n")))
+end
+
+
 ---@param lines string[]
 ---@return node[]
 function delimit.generate_nodes(lines)

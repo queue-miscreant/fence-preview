@@ -68,16 +68,14 @@ Plugin highlights
 TODOs
 -----
 
-- Asynchronous content is courteous of nodes and extmarks already in the buffer
-- Forced heights use folds outside of fences
-    - Height can be controlled by a comment in the split
-    - Open fold by entering split
-    - This requires extra logic for extmark height!
 - More (configurable) pipeline-like architecture
+    - Migrate to Lua
     - Pipelines for `math`, `latex`, and `image`
     - Errors along the LaTeX toolchain render as extmark errors
     - Pipeline files run in same directory as buffer file, or `/tmp/*` if no file
-- Preambles for fence content (TeX for math so that syntax works properly, Python imports(?))
+- Better splits
+    - Preambles for fence content (TeX for math so that syntax works properly, Python imports(?))
+    - Height can be controlled by a comment in the split
 - Default LaTeX display is not eye-searing
     - Simple: white text on black
     - Difficult: configurable, white text on configurable
