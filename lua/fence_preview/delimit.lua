@@ -7,7 +7,7 @@ local delimit = {}
 
 ---@class parsing_node
 ---@field type "fence"|"file"
----@field parameters string
+---@field parameters string[]
 ---@field start integer
 ---@field end_? integer
 ---@field content? string[]
@@ -40,15 +40,16 @@ local delimit = {}
 ---@alias node fence_node|file_node
 
 
----@param params string
+---@param params_list string[]
 ---@return fence_params|nil
-local function parse_node_parameters(params)
+local function parse_node_parameters(params_list)
   local filetype = nil
   local height = nil
 
   ---@type string[]
   local others = {}
 
+  local params = table.concat(params_list, ",")
   for i, param in ipairs(vim.split(params, ",")) do
     ---@type string
     local trimmed_param = vim.trim(param)
@@ -86,13 +87,14 @@ end
 ---@return node|nil
 local function cook_node(node)
   if node.type == "file" then
+    local filename = node.parameters[1]
     ---@type file_node
     return {
       type = "file",
-      filename = node.parameters,
+      filename = filename,
       range = {node.start + 1, node.end_},
       id = node.id,
-      hash = vim.fn.sha256(node.parameters)
+      hash = vim.fn.sha256(filename)
     }
   else
     local parsed = parse_node_parameters(node.parameters)
@@ -144,11 +146,12 @@ function delimit.generate_nodes(lines)
       if current_node == nil then
         current_node = {
           type = "fence",
-          parameters = fence_parameters,
+          parameters = { fence_parameters },
           start = line_number
         }
       -- Fence ending, push node
       else
+        table.insert(current_node.parameters, fence_parameters)
         current_node.end_ = line_number
         current_node.id = #nodes + 1
         current_node.content= {}
@@ -178,7 +181,7 @@ function delimit.generate_nodes(lines)
     if file_parameters ~= nil then
       current_node = {
         type = "file",
-        parameters = file_parameters,
+        parameters = { file_parameters },
         start = line_number
       }
       line_for_file = true
