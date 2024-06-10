@@ -58,7 +58,18 @@ end
 
 
 ---@type pipeline_stage
-function latex.write_math(args, callback, error_callback)
+function latex.add_math_preamble(args, callback, _)
+  local ret = { MATH_START, unpack(args.previous) } ---@diagnostic disable-line
+  table.insert(ret, MATH_END)
+  callback(ret)
+end
+
+
+-- Writes the argument (as a list of strings) to a ".tex" file.
+-- Passes along the resulting filepath if successful.
+--
+---@type pipeline_stage
+function latex.write_tex(args, callback, error_callback)
   -- create a new tex file containing the equation
   local tex_path = join_path(latex.tempdir, with_suffix(args.node.hash, ".tex"))
 
@@ -72,20 +83,16 @@ function latex.write_math(args, callback, error_callback)
     type(args.previous) ~= "table"
     or type(args.previous[1]) ~= "string"
   then
-    vim.print(args)
     error_callback("Cannot write math file: invalid argument")
     return
   end
 
   local file = io.open(tex_path, "w")
   if file == nil then
-    -- TODO
     error_callback(("Could not open file `%s`"):format(tex_path))
     return
   end
-  vim.print(args.previous)
-  file:write(MATH_START, unpack(args.previous)) ---@diagnostic disable-line
-  file:write(MATH_END)
+  file:write(unpack(args.previous)) ---@diagnostic disable-line
   file:close()
 
   callback(tex_path)
@@ -126,6 +133,9 @@ local function parse_latex_output(buf)
 end
 
 
+-- Run `latex` on the argument, which should be the path a TeX file.
+-- Passes the resulting DVI file if successful.
+--
 ---@type pipeline_stage
 function latex.generate_dvi_from_latex(args, callback, error_callback)
   local path = args.previous --[[@as path]]
@@ -155,7 +165,7 @@ function latex.generate_dvi_from_latex(args, callback, error_callback)
         -- exit the program
         if buf == "" then
           buf = table.concat(ret.stderr, "")
-          error_callback(("Latex exited with `%s`"):format(buf))
+          error_callback(("LaTeX exited with `%s`"):format(buf))
           return
         end
 
@@ -164,6 +174,9 @@ function latex.generate_dvi_from_latex(args, callback, error_callback)
       end
 
       callback(with_suffix(path, ".dvi"))
+    end,
+    function()
+      error_callback("LaTeX timed out!")
     end
   )
   -- Extra args from Rust:
@@ -172,6 +185,10 @@ function latex.generate_dvi_from_latex(args, callback, error_callback)
   -- .expect("Could not spawn latex");
 end
 
+
+-- Convert the argument, which should be the path to an SVG file, to a SVG.
+-- Passes the resulting file if successful.
+--
 ---@type pipeline_stage
 function latex.generate_svg_from_dvi(args, callback, error_callback)
   local path = args.previous --[[@as path]]
@@ -200,7 +217,122 @@ function latex.generate_svg_from_dvi(args, callback, error_callback)
       end
 
       callback(svg_path)
+    end,
+    function()
+      error_callback("dvisvgm timed out!")
     end
+  )
+end
+
+
+-- Convert the argument, which should be the path to a vector file, to a raster
+-- image (specifically PNG) using ImageMagick.
+-- Passes the resulting file if successful.
+--
+---@type pipeline_stage
+function latex.rasterize(args, callback, error_callback)
+  local path = args.previous --[[@as path]]
+  if vim.fn.filereadable(path) == 0 then error_callback("SVG file not found") return end
+
+  -- convert the dvi to a svg file with the woff font format
+  local png_path = with_suffix(path, ".png")
+
+  -- Skip if the PNG already exists
+  if vim.fn.filereadable(png_path) ~= 0 then callback(png_path) return end
+
+  pipeline.subprocess("convert",
+    {
+      args ={ "-density", "600", path, png_path },
+      stdio = { false, false, false },
+      cwd = latex.tempdir,
+    },
+    function(ret)
+      -- TODO
+      if ret.code ~= 0 then
+        error_callback("An unknown error occurred in ImageMagick")
+        return
+      end
+
+      callback(png_path)
+    end,
+    function()
+      error_callback("ImageMagick timed out!")
+    end
+  )
+end
+
+
+-- Pipe the argument (as a list of strings) into a Python interpreter,
+-- Passes along the output lines if successful.
+--
+---@type pipeline_stage
+function latex.run_python(args, callback, error_callback)
+  local code = args.previous --[[@as string[] ]]
+
+  local _, stdin = pipeline.subprocess("python",
+    {
+      args ={ "-" },
+      stdio = { true, true, true },
+      cwd = latex.tempdir,
+    },
+    function(ret)
+      if ret.code ~= 0 then
+        error_callback("Python error:\n" .. vim.split(table.concat(ret.stderr, ""), "\n"))
+        return
+      end
+
+      callback(vim.split(table.concat(ret.stdout, ""), "\n"))
+    end,
+    function()
+      error_callback("Python timed out!")
+    end
+  )
+  if stdin == nil then return end
+
+  stdin:write(
+    table.concat(code, "\n"),
+    function() stdin:shutdown() end
+  )
+end
+
+
+-- Pipe the argument (as a list of strings) through gnuplot, targeting a PNG file.
+-- Passes along the resulting LaTeX file if successful.
+--
+---@type pipeline_stage
+function latex.gnuplot_to_png(args, callback, error_callback)
+  local content = args.previous --[[@as string[] ]]
+  local path = join_path(
+    latex.tempdir,
+    with_suffix(args.node.hash, ".png")
+  )
+
+  local preamble = ("set output '%s'\nset terminal png\n"):format(path)
+
+  local _, stdin = pipeline.subprocess("gnuplot",
+    {
+      args ={ "-" },
+      stdio = { true, false, true },
+      cwd = latex.tempdir,
+    },
+    function(ret)
+      if ret.code ~= 0 then
+        -- TODO:
+        error_callback("gnuplot error:\n" .. vim.split(table.concat(ret.stderr, ""), "\n"))
+        return
+      end
+
+      callback(path)
+    end,
+    function()
+      error_callback("gnuplot timed out!")
+    end
+  )
+  if stdin == nil then return end
+
+  stdin:write(
+    preamble .. table.concat(content, "\n"),
+    function() stdin:shutdown() end
   )
 end
 

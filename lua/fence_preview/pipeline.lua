@@ -8,7 +8,7 @@ function pipeline.add_runner(name, fun)
 end
 
 -- Pipelines are basically a MonadFail.
--- The failure case corresponds to setting an error on the extmark.
+-- The failure case should correspond to setting an error on the extmark.
 
 ---@class pipeline_input
 ---@field previous any
@@ -17,15 +17,9 @@ end
 ---@alias pipeline_stage fun(input: pipeline_input, callback: fun(ret: any), error_callback: fun(any))
 
 
----@param input node
-local function run_pipeline(input, error_callback)
+---@param input pipeline_input
+local function run_pipeline(input, stages, error_callback)
   if error_callback == nil then error_callback = vim.print end
-
-  ---@type (fun(params: fence_params): pipeline_stage[])|nil
-  local stage_builder = pipeline.runners[input.params.filetype]
-  if stage_builder == nil then --[[ TODO ]] return end
-
-  local stages = stage_builder(input.params)
 
   local stage = 1
   local function linker(output)
@@ -35,21 +29,14 @@ local function run_pipeline(input, error_callback)
     next_stage(
       {
         previous = output,
-        node = input
+        node = input.node
       },
       linker,
       error_callback
     )
   end
 
-  stages[1](
-    {
-      previous = input.content,
-      node = input
-    },
-    linker,
-    error_callback
-  )
+  stages[1](input, linker, error_callback)
 end
 
 pipeline.run = run_pipeline
@@ -57,6 +44,9 @@ pipeline.run = run_pipeline
 ---@class handle
 
 ---@class pipe
+---@field write fun(self: pipe, input: string|string[], callback?: fun(err: string|nil))
+---@field read_start fun(self: pipe, callback: fun(err: string|nil, data: string|nil))
+---@field shutdown fun(self: pipe, callback?: fun())
 
 ---@class subprocess_return
 ---@field code integer
@@ -78,9 +68,9 @@ function pipeline.subprocess(process, params, callback, callback_timeout)
   local stdin = nil
   local stdout = nil
   local stderr = nil
-  if stdio[1] then stdin = vim.loop.new_pipe() end
-  if stdio[2] then stdout = vim.loop.new_pipe() end
-  if stdio[3] then stderr = vim.loop.new_pipe() end
+  if stdio[1] then stdin = vim.loop.new_pipe() --[[@as pipe]] end
+  if stdio[2] then stdout = vim.loop.new_pipe() --[[@as pipe]] end
+  if stdio[3] then stderr = vim.loop.new_pipe() --[[@as pipe]] end
 
   params.stdio = { stdin, stdout, stderr }
 
@@ -91,6 +81,7 @@ function pipeline.subprocess(process, params, callback, callback_timeout)
   local handle = vim.loop.spawn(process,
     params,
     function(code, signal)
+      if stdin then stdin:shutdown() end
       finished = true
       callback{
         code = code,

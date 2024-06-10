@@ -5,48 +5,74 @@ local generate_content = {}
 
 ---@type {[string]: fun(params: fence_params): pipeline_stage[] }
 
-pipeline.add_runner("latex", function(params)
+-- TODO: versions for filenames only
+
+pipeline.add_runner("latex", function(_)
   return {
+    latex.write_tex,
     latex.generate_dvi_from_latex,
-    latex.generate_svg_from_dvi
-    -- TODO: rasterize
+    latex.generate_svg_from_dvi,
+    latex.rasterize
   }
 end)
 
 pipeline.add_runner("math", function(params)
   return {
-    latex.write_math,
+    latex.add_math_preamble,
     unpack(pipeline.runners.latex(params)) ---@diagnostic disable-line
   }
 end)
 
-pipeline.add_runner("gnuplot", function(params)
+pipeline.add_runner("gnuplot", function(_)
   return {
-    -- TODO: write to gnuplot file
-    latex.generate_dvi_from_latex,
-    latex.generate_svg_from_dvi
+    latex.gnuplot_to_png
   }
 end)
 
 
 pipeline.add_runner("python", function(params)
   local ret = {
-    -- TODO: python input
+    latex.run_python
   }
 
-  if params.others["math"] then
+  if vim.list_contains(params.others, "math") then
     params["math"] = nil
     local math_pipeline = pipeline.runners.math(params)
-    table.move(math_pipeline, 1, #math_pipeline, #ret + 1, ret)
-  elseif params.others["latex"] then
+    vim.list_extend(ret, math_pipeline)
+  elseif vim.list_contains(params.others, "latex") then
     params["latex"] = nil
     local latex_pipeline = pipeline.runners.latex(params)
-    table.move(latex_pipeline, 1, #latex_pipeline, #ret + 1, ret)
-  elseif params.others["image"] then
+    vim.list_extend(ret, latex_pipeline)
+  elseif vim.list_contains(params.others, "image") then
+    -- TODO
+  else
     -- TODO
   end
+  table.insert(ret, function(data) print(vim.inspect(data)) end)
 
   return ret
 end)
+
+
+---@param nodes node[]
+function generate_content.pipe_nodes(nodes)
+  for _, node in pairs(nodes) do
+    -- TODO: no support for extensions
+    ---@type (fun(params: fence_params): pipeline_stage[])|nil
+    local stage_builder = pipeline.runners[node.params.filetype]
+    if stage_builder == nil then --[[ TODO ]] goto continue end
+
+    pipeline.run(
+      {
+        previous = node.content,
+        node = node
+      },
+      stage_builder(node.params)
+    )
+
+    ::continue::
+  end
+end
+
 
 return generate_content

@@ -18,7 +18,7 @@ fence_preview = {
   -- TODO: move these to buffer-local
   ---@type node[]
   last_nodes = {},
-  ---@type node[]
+  ---@type {[string]: integer}
   extmark_map = {},
   ---@type integer
   minimum_height = 3,
