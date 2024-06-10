@@ -13,6 +13,7 @@ end
 ---@class pipeline_input
 ---@field previous any
 ---@field node node
+---@field draw_number integer
 
 ---@alias pipeline_stage fun(input: pipeline_input, callback: fun(ret: any), error_callback: fun(any))
 
@@ -24,12 +25,14 @@ local function run_pipeline(input, stages, error_callback)
   local stage = 1
   local function linker(output)
     stage = stage + 1
+    ---@type pipeline_stage
     local next_stage = stages[stage]
     if next_stage == nil then return end
     next_stage(
       {
         previous = output,
-        node = input.node
+        node = input.node,
+        draw_number = input.draw_number
       },
       linker,
       error_callback

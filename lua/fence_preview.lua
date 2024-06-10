@@ -22,7 +22,8 @@ fence_preview = {
   extmark_map = {},
   ---@type integer
   minimum_height = 3,
-  pipeline = pipeline
+  pipeline = pipeline,
+  generate_content = generate_content
 }
 
 vim.api.nvim_create_augroup("FencePreview", { clear = false })
@@ -52,55 +53,6 @@ local function node_under_cursor(nodes, cursor_line)
 end
 
 
----@param node node
-local function refold_node(node)
-  if node.params == nil or node.params == vim.NIL or node.params.height == nil then return end
-
-  -- delete all folds in the range
-  local saved = vim.fn.winsaveview()
-  pcall(function() vim.cmd(("normal %dGzD"):format(node.range[2] - 1)) end)
-  vim.fn.winrestview(saved)
-
-  local height = math.max(node.params.height, fence_preview.minimum_height)
-  if height < node.range[2] - node.range[1] + 1 then
-    -- add fold to the proper height
-    vim.cmd(("%d,%dfold"):format(node.range[1] + height - 2, node.range[2] - 1))
-  end
-end
-
----@param buffer integer
----@param path string
----@param node node
-function fence_preview.try_draw_extmark(buffer, path, node, draw_number)
-  vim.api.nvim_buf_call(buffer, function()
-    if vim.b.draw_number ~= draw_number then return end
-
-    refold_node(node)
-
-    -- Compare the node received against nodes in the current buffer
-    for _, last_node in ipairs(fence_preview.last_nodes) do
-      -- Try to reuse extmark
-      local last_node_extmark = fence_preview.extmark_map[tostring(last_node.id)]
-      if
-        node.id == last_node.id
-        and last_node_extmark ~= nil
-      then
-        if last_node.hash ~= node.hash then
-          sixel_extmarks.change_content(last_node_extmark, path)
-          sixel_extmarks.move(last_node_extmark, node.range[1] - 1, node.range[2] - 1, path)
-          return
-        else
-          sixel_extmarks.remove(last_node_extmark)
-          break
-        end
-      end
-    end
-
-    fence_preview.extmark_map[tostring(node.id)] = sixel_extmarks.create(node.range[1] - 1, node.range[2] - 1, path)
-  end)
-end
-
-
 function fence_preview.reload()
   vim.b.draw_number = (vim.b.draw_number or 0) + 1
   ---@type integer
@@ -108,7 +60,7 @@ function fence_preview.reload()
   ---@type string[]
   local current_lines = vim.api.nvim_buf_get_lines(0, 0, -1, 0)
 
-  local nodes = delimit.generate_nodes(current_lines)
+  local nodes = delimit.generate_nodes(current_lines, current_buffer)
 
   -- Cursor
   vim.b.fence_preview_inside_node = nil
@@ -121,8 +73,7 @@ function fence_preview.reload()
 
   -- Push external content to Python for running
   sixel_extmarks.remove_all()
-  vim.fn.FenceAsyncGen(
-    current_buffer,
+  generate_content.pipe_nodes(
     vim.tbl_filter(
       function(node) return node.id ~= vim.b.fence_preview_inside_node end,
       nodes
@@ -169,15 +120,14 @@ function fence_preview.bind()
           vim.w.fence_preview_last_line = new_cursor
 
           if node ~= nil and not cursor_in_node(node, new_cursor) then
-            refold_node(node)
+            generate_content.refold_node(node)
           end
           return
         end
 
         vim.wo.foldmethod = "manual"
 
-        vim.fn.FenceAsyncGen(
-          vim.api.nvim_get_current_buf(),
+        generate_content.pipe_nodes(
           vim.tbl_filter(
             function(node) return node.id == vim.b.fence_preview_inside_node end,
             fence_preview.last_nodes

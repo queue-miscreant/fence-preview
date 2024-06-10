@@ -27,6 +27,7 @@ local delimit = {}
 ---@field range [integer, integer]
 ---@field id integer
 ---@field hash string
+---@field buffer integer
 ---@field extmark_id? integer
 
 ---@class file_node
@@ -35,6 +36,7 @@ local delimit = {}
 ---@field range [integer, integer]
 ---@field id integer
 ---@field hash string
+---@field buffer integer
 ---@field extmark_id? integer
 
 ---@alias node fence_node|file_node
@@ -85,7 +87,7 @@ end
 
 ---@param node parsing_node
 ---@return node|nil
-local function cook_node(node)
+local function cook_node(node, buffer_number)
   if node.type == "file" then
     local filename = node.parameters[1]
     ---@type file_node
@@ -94,7 +96,8 @@ local function cook_node(node)
       filename = filename,
       range = {node.start + 1, node.end_},
       id = node.id,
-      hash = vim.fn.sha256(filename)
+      hash = vim.fn.sha256(filename),
+      buffer = buffer_number
     }
   else
     local parsed = parse_node_parameters(node.parameters)
@@ -108,7 +111,8 @@ local function cook_node(node)
       content = node.content,
       range = {node.start, node.end_},
       id = node.id,
-      hash = vim.fn.sha256(vim.trim(table.concat(node.content, "\n")))
+      hash = vim.fn.sha256(vim.trim(table.concat(node.content, "\n"))),
+      buffer = buffer_number
     }
   end
 end
@@ -123,8 +127,9 @@ end
 
 
 ---@param lines string[]
+---@param buffer_number integer
 ---@return node[]
-function delimit.generate_nodes(lines)
+function delimit.generate_nodes(lines, buffer_number)
   ---@type node[]
   local nodes = {}
   ---@type parsing_node|nil
@@ -138,7 +143,7 @@ function delimit.generate_nodes(lines)
       current_node.end_ = line_number - 1
       current_node.id = #nodes + 1
 
-      local cooked = cook_node(current_node)
+      local cooked = cook_node(current_node, buffer_number)
       if cooked ~= nil then
         table.insert(nodes, cooked)
       end
@@ -173,7 +178,7 @@ function delimit.generate_nodes(lines)
           )
         end
 
-        local cooked = cook_node(current_node)
+        local cooked = cook_node(current_node, buffer_number)
         if cooked ~= nil then
           table.insert(nodes, cooked)
         end
