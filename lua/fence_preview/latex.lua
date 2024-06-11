@@ -15,8 +15,7 @@ MATH_END = [[
 ]]
 
 local latex = {
-  -- tempdir = vim.fn.fnamemodify(vim.fn.tempname(), ":h")
-  tempdir = ".",
+  tempdir = vim.fn.fnamemodify(vim.fn.tempname(), ":h")
 }
 
 
@@ -110,7 +109,7 @@ local function parse_latex_output(buf)
     ---@cast elm string
     if elm:find("! ", 1, true) ~= nil then
       err[1] = elm
-    elseif elm:find("l.", 1, true) ~= nil and elm:find("Emergency stop", 1, true) == -1 then
+    elseif elm:find("l.", 1, true) ~= nil and elm:find("Emergency stop", 1, true) == nil then
       -- TODO
       local _, elms = elm:match("^(1%.)?(.+)")
       if elm == elms then
@@ -198,21 +197,22 @@ function latex.generate_svg_from_dvi(args, callback, error_callback)
   local svg_path = with_suffix(path, ".svg")
 
   -- Skip if the SVG already exists
+  print(svg_path, vim.fn.filereadable(svg_path))
   if vim.fn.filereadable(svg_path) ~= 0 then callback(svg_path) return end
 
   pipeline.subprocess("dvisvgm",
     {
-      args ={ "-b", "1", "--no-fonts", "--zoom=1.0", tostring(path) },
+      args ={ "-b", "1", "--no-fonts", "--zoom=1.0", path },
       stdio = { false, true, true },
       cwd = latex.tempdir,
     },
     function(ret)
       -- TODO
       local buf = table.concat(ret.stderr, "")
-      if ret.code ~= 0 or buf:find("error:") ~= -1 then
-        buf = table.concat(ret.stdout, "")
+      if ret.code ~= 0 or buf:find("error:", 1, true) ~= nil then
+        -- buf = table.concat(ret.stdout, "")
 
-        error_callback(buf)
+        error_callback("dvisvgm error: " .. buf)
         return
       end
 

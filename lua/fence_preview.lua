@@ -4,8 +4,8 @@
 -- Generally ensures that "fast" callbacks such as creating new extmarks
 -- done without IPC overhead.
 
-local delimit = require "fence_preview/delimit"
-local side_window = require "fence_preview/side_window"
+local delimit = require "fence_preview.delimit"
+local side_window = require "fence_preview.side_window"
 local pipeline = require "fence_preview.pipeline"
 local generate_content = require "fence_preview.generate_content"
 

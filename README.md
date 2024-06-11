@@ -69,8 +69,8 @@ TODOs
 -----
 
 - More (configurable) pipeline-like architecture
-    - Migrate to Lua
-    - Pipelines for `math`, `latex`, and `image`
+    - Refactor pipelines to be local
+    - Polyfill newer vim functions, rewrite to use vim.spawn wrapper
     - Errors along the LaTeX toolchain render as extmark errors
     - Pipeline files run in same directory as buffer file, or `/tmp/*` if no file
 - Better splits

@@ -4,10 +4,6 @@ local latex = require "fence_preview.latex"
 local generate_content = {}
 
 
-local function add_image_extmark(input, _, _)
-end
-
-
 ---@param node node
 function generate_content.refold_node(node)
   if node.params == nil or node.params == vim.NIL or node.params.height == nil then return end
@@ -24,10 +20,6 @@ function generate_content.refold_node(node)
   end
 end
 
----@param buffer integer
----@param path string
----@param node node
--- function generate_content.try_draw_extmark(buffer, path, node, draw_number)
 
 ---@type pipeline_stage
 function generate_content.try_draw_extmark(args)
@@ -122,23 +114,78 @@ pipeline.add_runner("python", function(params)
 end)
 
 
+---@type pipeline_stage
+local function read_file(args, callback, error_callback)
+  local path = args.previous --[[@as path]]
+
+  local file = io.open(args.previous)
+  if file == nil then
+    error_callback(("Could not read file `%s`"):format(path))
+    return
+  end
+
+  local content = file:read("a")
+  file:close()
+
+  callback(vim.split(content, "\n"))
+end
+
+
+---@param node file_node
+---@return pipeline_stage[] | nil
+local function extension_to_stages(node)
+  local _, extension = (vim.fs.basename(node.filename)):match("([^.]*)%.?(%w*)$")
+  if extension == nil then return nil end
+
+  if extension == "plt" then -- gnuplot
+    return {
+      read_file,
+      latex.gnuplot_to_png,
+      generate_content.try_draw_extmark
+    }
+  elseif extension == "tex" then -- LaTeX
+    return {
+      latex.generate_dvi_from_latex,
+      latex.generate_svg_from_dvi,
+      latex.rasterize,
+      generate_content.try_draw_extmark
+    }
+  else
+    return { generate_content.try_draw_extmark }
+  end
+
+end
+
+
 ---@param nodes node[]
 function generate_content.pipe_nodes(nodes, draw_number)
   for _, node in pairs(nodes) do
-    -- TODO: no support for extensions
-    if node.params == nil then --[[ TODO ]] goto continue end
+    ---@type pipeline_stage[] | nil
+    local stages = nil
+    ---@type string[] | string
+    local value = nil
+    if node.type == "file" then
+      ---@cast node file_node
+      stages = extension_to_stages(node)
+      value = vim.fs.normalize(node.filename) -- TODO
+    else
+      ---@cast node fence_node
+      local stage_builder = pipeline.runners[node.params.filetype]
+      if stage_builder == nil then goto continue end
 
-    ---@type (fun(params: fence_params): pipeline_stage[])|nil
-    local stage_builder = pipeline.runners[node.params.filetype]
-    if stage_builder == nil then --[[ TODO ]] goto continue end
+      stages = stage_builder(node.params)
+      value = node.content
+    end
+
+    if stages == nil then goto continue end
 
     pipeline.run(
       {
-        previous = node.content,
+        previous = value,
         node = node,
         draw_number = draw_number
       },
-      stage_builder(node.params)
+      stages
     )
 
     ::continue::

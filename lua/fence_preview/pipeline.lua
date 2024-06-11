@@ -15,12 +15,12 @@ end
 ---@field node node
 ---@field draw_number integer
 
----@alias pipeline_stage fun(input: pipeline_input, callback: fun(ret: any), error_callback: fun(any))
+---@alias pipeline_stage fun(input: pipeline_input, callback: fun(ret: any), error_callback: fun(msg: string))
 
 
 ---@param input pipeline_input
 local function run_pipeline(input, stages, error_callback)
-  if error_callback == nil then error_callback = vim.print end
+  if error_callback == nil then error_callback = function(e) print(e) end end
 
   local stage = 1
   local function linker(output)
