@@ -73,10 +73,8 @@ function latex.write_tex(args, callback, error_callback)
   local tex_path = join_path(latex.tempdir, with_suffix(args.node.hash, ".tex"))
 
   -- No need to write the file again, continue with pipeline
-  if vim.fn.filereadable(tex_path) ~= 0 then
-    callback(tex_path)
-    return
-  end
+  if vim.fn.filereadable(tex_path) ~= 0 then return tex_path end
+
   -- Bad argument
   if
     type(args.previous) ~= "table"
@@ -102,6 +100,7 @@ end
 -- TODO: Look at latex output more clearly
 --
 ---@param buf string
+---@return [string, string, any]
 local function parse_latex_output(buf)
   local err = { "", "", nil }
 
@@ -143,7 +142,7 @@ function latex.generate_dvi_from_latex(args, callback, error_callback)
   -- use latex to generate a dvi
   local dvi_path = with_suffix(path, ".dvi")
   -- Skip if the dvi already exists
-  if vim.fn.filereadable(dvi_path) ~= 0 then callback(dvi_path) return end
+  if vim.fn.filereadable(dvi_path) ~= 0 then return dvi_path end
 
   pipeline.subprocess("latex",
     {
@@ -152,23 +151,24 @@ function latex.generate_dvi_from_latex(args, callback, error_callback)
       cwd = latex.tempdir,
     },
     function(ret)
+      pipeline.log(ret.stdout)
+      pipeline.log(ret.stderr)
+      pipeline.log(args)
       if
         false
         -- and ret.code ~= 0
       then
         -- TODO
-        local buf = table.concat(ret.stdout, "")
 
         -- latex prints error to the stdout, if this is empty, then something is fundamentally
         -- wrong with the latex binary (for example shared library error). In this case just
         -- exit the program
-        if buf == "" then
-          buf = table.concat(ret.stderr, "")
-          error_callback(("LaTeX exited with `%s`"):format(buf))
+        if ret.stdout == "" then
+          error_callback(("LaTeX exited with `%s`"):format(ret.stderr))
           return
         end
 
-        error_callback(parse_latex_output(buf))
+        error_callback(parse_latex_output(ret.stderr)[1])
         return
       end
 
@@ -197,8 +197,7 @@ function latex.generate_svg_from_dvi(args, callback, error_callback)
   local svg_path = with_suffix(path, ".svg")
 
   -- Skip if the SVG already exists
-  print(svg_path, vim.fn.filereadable(svg_path))
-  if vim.fn.filereadable(svg_path) ~= 0 then callback(svg_path) return end
+  if vim.fn.filereadable(svg_path) ~= 0 then return svg_path end
 
   pipeline.subprocess("dvisvgm",
     {
@@ -208,11 +207,14 @@ function latex.generate_svg_from_dvi(args, callback, error_callback)
     },
     function(ret)
       -- TODO
-      local buf = table.concat(ret.stderr, "")
-      if ret.code ~= 0 or buf:find("error:", 1, true) ~= nil then
+      pipeline.log(ret.stdout)
+      pipeline.log(ret.stderr)
+      pipeline.log(args)
+
+      if ret.code ~= 0 or ret.stderr:find("error:", 1, true) ~= nil then
         -- buf = table.concat(ret.stdout, "")
 
-        error_callback("dvisvgm error: " .. buf)
+        error_callback("dvisvgm error: " .. ret.stderr)
         return
       end
 
@@ -238,17 +240,19 @@ function latex.rasterize(args, callback, error_callback)
   local png_path = with_suffix(path, ".png")
 
   -- Skip if the PNG already exists
-  if vim.fn.filereadable(png_path) ~= 0 then callback(png_path) return end
+  if vim.fn.filereadable(png_path) ~= 0 then return png_path end
 
-  pipeline.subprocess("convert",
+  pipeline.subprocess("magick",
     {
       args ={ "-density", "600", path, png_path },
-      stdio = { false, false, false },
+      stdio = { false, true, true },
       cwd = latex.tempdir,
     },
     function(ret)
       -- TODO
       if ret.code ~= 0 then
+        pipeline.log("RASTERIZE", ret)
+        pipeline.log(args)
         error_callback("An unknown error occurred in ImageMagick")
         return
       end
@@ -277,11 +281,14 @@ function latex.run_python(args, callback, error_callback)
     },
     function(ret)
       if ret.code ~= 0 then
-        error_callback("Python error:\n" .. vim.split(table.concat(ret.stderr, ""), "\n"))
+        pipeline.log(ret.stdout)
+        pipeline.log(ret.stderr)
+        pipeline.log(args)
+        error_callback("Python error:\n" .. vim.split(ret.stderr, "\n"))
         return
       end
 
-      callback(vim.split(table.concat(ret.stdout, ""), "\n"))
+      callback(vim.split(ret.stdout, "\n"))
     end,
     function()
       error_callback("Python timed out!")
@@ -318,7 +325,10 @@ function latex.gnuplot_to_png(args, callback, error_callback)
     function(ret)
       if ret.code ~= 0 then
         -- TODO:
-        error_callback("gnuplot error:\n" .. vim.split(table.concat(ret.stderr, ""), "\n"))
+        pipeline.log(ret.stdout)
+        pipeline.log(ret.stderr)
+        pipeline.log(args)
+        error_callback("gnuplot error:\n" .. vim.split(ret.stderr, "\n"))
         return
       end
 

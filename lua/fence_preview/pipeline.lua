@@ -1,10 +1,21 @@
 local pipeline = {
   runners = {},
+  _logs = {},
   subprocess_timeout_ms = 5000,
 }
 
 function pipeline.add_runner(name, fun)
   pipeline.runners[name] = fun
+end
+
+function pipeline.log(...)
+  local args = { ... }
+  for _, entry in ipairs(args) do
+    if type(entry) ~= "string" then
+      entry = vim.inspect(entry)
+    end
+    vim.list_extend(pipeline._logs, vim.split(entry, "\n"))
+  end
 end
 
 -- Pipelines are basically a MonadFail.
@@ -15,12 +26,18 @@ end
 ---@field node node
 ---@field draw_number integer
 
----@alias pipeline_stage fun(input: pipeline_input, callback: fun(ret: any), error_callback: fun(msg: string))
+---@alias pipeline_stage fun(input: pipeline_input, callback: fun(ret: any), error_callback: fun(msg: string)): any
 
 
 ---@param input pipeline_input
 local function run_pipeline(input, stages, error_callback)
-  if error_callback == nil then error_callback = function(e) print(e) end end
+  local function cb(e)
+    if error_callback == nil then
+      print(e, input)
+    else
+      error_callback(e, input)
+    end
+  end
 
   local stage = 1
   local function linker(output)
@@ -28,18 +45,22 @@ local function run_pipeline(input, stages, error_callback)
     ---@type pipeline_stage
     local next_stage = stages[stage]
     if next_stage == nil then return end
-    next_stage(
-      {
-        previous = output,
-        node = input.node,
-        draw_number = input.draw_number
-      },
-      linker,
-      error_callback
-    )
+
+    input.previous = output
+    local safe, next_value = pcall(function() return next_stage(input, linker, cb) end)
+    while next_value ~= nil do
+      if not safe then error_callback(next_value, input) return end
+      stage = stage + 1
+      ---@type pipeline_stage
+      next_stage = stages[stage]
+      if next_stage == nil then return end
+
+      input.previous = next_value
+      safe, next_value = pcall(function() return next_stage(input, linker, cb) end)
+    end
   end
 
-  stages[1](input, linker, error_callback)
+  stages[1](input, linker, cb)
 end
 
 pipeline.run = run_pipeline
@@ -54,8 +75,8 @@ pipeline.run = run_pipeline
 ---@class subprocess_return
 ---@field code integer
 ---@field signal integer
----@field stdout string[]
----@field stderr string[]
+---@field stdout string
+---@field stderr string
 
 -- Wrapper around luv.spawn which automatically sets up pipes.
 --
@@ -89,8 +110,8 @@ function pipeline.subprocess(process, params, callback, callback_timeout)
       callback{
         code = code,
         signal = signal,
-        stdout = stdout_content,
-        stderr = stderr_content,
+        stdout = table.concat(stdout_content, ""),
+        stderr = table.concat(stderr_content, "")
       }
     end
   )

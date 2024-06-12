@@ -26,7 +26,7 @@ function generate_content.try_draw_extmark(args)
   local path = args.previous
   local node = args.node
 
-  if not vim.fn.filereadable(path) then return end
+  if vim.fn.filereadable(path) == 0 then return end
 
   vim.defer_fn(function()
     vim.api.nvim_buf_call(node.buffer, function()
@@ -44,11 +44,8 @@ function generate_content.try_draw_extmark(args)
         then
           if last_node.hash ~= node.hash then
             sixel_extmarks.change_content(last_node_extmark, path)
-            sixel_extmarks.move(last_node_extmark, node.range[1] - 1, node.range[2] - 1, path)
+            sixel_extmarks.move(last_node_extmark, node.range[1] - 1, node.range[2] - 1)
             return
-          else
-            sixel_extmarks.remove(last_node_extmark)
-            break
           end
         end
       end
@@ -57,6 +54,40 @@ function generate_content.try_draw_extmark(args)
     end)
   end, 0)
 end
+
+
+---@param message string
+---@param args pipeline_input
+function generate_content.try_error_extmark(message, args)
+  local node = args.node
+
+  pipeline.log(message)
+  pipeline.log(args)
+
+  vim.defer_fn(function()
+    vim.api.nvim_buf_call(node.buffer, function()
+      pipeline.log(vim.b.draw_number, args.draw_number)
+      if vim.b.draw_number ~= args.draw_number then return end
+
+      -- Compare the node received against nodes in the current buffer
+      for _, last_node in ipairs(fence_preview.last_nodes) do
+        -- Try to reuse extmark
+        local last_node_extmark = fence_preview.extmark_map[tostring(last_node.id)]
+        if
+          node.id == last_node.id
+          and last_node_extmark ~= nil
+        then
+          sixel_extmarks.set_extmark_error(last_node_extmark, message)
+          sixel_extmarks.move(last_node_extmark, node.range[1] - 1, node.range[2] - 1)
+          return
+        end
+      end
+
+      fence_preview.extmark_map[tostring(node.id)] = sixel_extmarks.create_error(node.range[1] - 1, node.range[2] - 1, message)
+    end)
+  end, 0)
+end
+
 
 ---@type {[string]: fun(params: fence_params): pipeline_stage[] }
 
@@ -108,7 +139,6 @@ pipeline.add_runner("python", function(params)
   else
     -- TODO
   end
-  table.insert(ret, function(data) print(vim.inspect(data)) end)
 
   return ret
 end)
@@ -185,7 +215,8 @@ function generate_content.pipe_nodes(nodes, draw_number)
         node = node,
         draw_number = draw_number
       },
-      stages
+      stages,
+      generate_content.try_error_extmark
     )
 
     ::continue::

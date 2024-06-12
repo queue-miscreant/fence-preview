@@ -85,6 +85,26 @@ function fence_preview.reload()
 end
 
 
+function fence_preview.show_logs()
+  local new_buffer = vim.api.nvim_create_buf(0, 1)
+  vim.api.nvim_buf_set_lines(
+    new_buffer,
+    0,
+    -1,
+    0,
+    pipeline._logs
+  )
+  vim.api.nvim_open_win(
+    new_buffer,
+    true,
+    {
+      win = 0,
+      split = "right"
+    }
+  )
+end
+
+
 function fence_preview.bind()
   if vim.b.fence_preview_bound_autocmds then return end
 
