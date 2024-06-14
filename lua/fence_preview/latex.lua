@@ -15,31 +15,20 @@ MATH_END = [[
 \end{document}
 ]]
 
-local latex = {
-}
+local latex = {}
 
-
--- local latex_path = shutil.which("latex")
--- if latex_path == nil then
---   error("Could not find LaTeX installation!")
--- end
-
--- local dvisvgm_path = shutil.which("dvisvgm")
--- if dvisvgm_path == nil then
---   error("Could not find dvisvgm!")
--- end
-
-
+-- Add a standard LaTeX preamble to lines which should always be interpreted in math mode.
+--
 ---@type pipeline_stage
-function latex.add_math_preamble(args, callback, _)
+function latex.add_math_preamble(args)
   local ret = { MATH_START, unpack(args.previous) } ---@diagnostic disable-line
   table.insert(ret, MATH_END)
-  callback(ret)
+  return ret
 end
 
 
 -- Writes the argument (as a list of strings) to a ".tex" file.
--- Passes along the resulting filepath if successful.
+-- Passes the resulting filepath if successful.
 --
 ---@type pipeline_stage
 function latex.write_tex(args, callback, error_callback)
@@ -106,7 +95,7 @@ end
 
 
 -- Run `latex` on the argument, which should be the path a TeX file.
--- Passes the resulting DVI file if successful.
+-- Passes the resulting filepath if successful.
 --
 ---@type pipeline_stage
 function latex.generate_dvi_from_latex(args, callback, error_callback)
@@ -135,7 +124,7 @@ function latex.generate_dvi_from_latex(args, callback, error_callback)
         false
         -- and ret.code ~= 0
       then
-        -- TODO
+        -- TODO: LaTeX error handling
 
         -- latex prints error to the stdout, if this is empty, then something is fundamentally
         -- wrong with the latex binary (for example shared library error). In this case just
@@ -162,8 +151,8 @@ function latex.generate_dvi_from_latex(args, callback, error_callback)
 end
 
 
--- Convert the argument, which should be the path to an SVG file, to a SVG.
--- Passes the resulting file if successful.
+-- Convert the argument, which should be the path to an DVI file, to a SVG.
+-- Passes the resulting filepath if successful.
 --
 ---@type pipeline_stage
 function latex.generate_svg_from_dvi(args, callback, error_callback)
@@ -183,7 +172,7 @@ function latex.generate_svg_from_dvi(args, callback, error_callback)
       cwd = path.tempdir,
     },
     function(ret)
-      -- TODO
+      -- TODO: dvisvgm error handling
       pipeline.log(ret.stdout)
       pipeline.log(ret.stderr)
       pipeline.log(args)
@@ -206,7 +195,7 @@ end
 
 -- Convert the argument, which should be the path to a vector file, to a raster
 -- image (specifically PNG) using ImageMagick.
--- Passes the resulting file if successful.
+-- Passes the resulting filepath if successful.
 --
 ---@type pipeline_stage
 function latex.rasterize(args, callback, error_callback)
@@ -226,10 +215,7 @@ function latex.rasterize(args, callback, error_callback)
       cwd = path.tempdir,
     },
     function(ret)
-      -- TODO
       if ret.code ~= 0 then
-        pipeline.log("RASTERIZE", ret)
-        pipeline.log(args)
         error_callback("An unknown error occurred in ImageMagick")
         return
       end
@@ -279,7 +265,7 @@ function latex.run_python(args, callback, error_callback)
         -- Display image
         next_stage = "display"
       else
-        -- TODO
+        -- TODO: potentially chain into text
       end
 
       callback(vim.split(ret.stdout, "\n"), next_stage)
@@ -298,7 +284,7 @@ end
 
 
 -- Pipe the argument (as a list of strings) through gnuplot, targeting a PNG file.
--- Passes along the resulting LaTeX file if successful.
+-- Passes the resulting filepath if successful.
 --
 ---@type pipeline_stage
 function latex.gnuplot_to_png(args, callback, error_callback)
@@ -315,7 +301,7 @@ function latex.gnuplot_to_png(args, callback, error_callback)
     },
     function(ret)
       if ret.code ~= 0 then
-        -- TODO:
+        -- TODO: gnuplot error handling
         pipeline.log(ret.stdout)
         pipeline.log(ret.stderr)
         pipeline.log(args)

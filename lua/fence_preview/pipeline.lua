@@ -1,3 +1,5 @@
+local path = require "fence_preview.path"
+
 local pipeline = {
   ---@type {[string]: pipeline_stage[]}
   runners = {},
@@ -5,11 +7,11 @@ local pipeline = {
   subprocess_timeout_ms = 5000,
 }
 
--- Declare a runner with a name. The runner should be a list of pipeline stages, or
+-- Declare a pipeline with a name. The  should be a list containing pipeline stages, or
 -- a string to a pipeline stage which already exists.
 --
----@param funs (pipeline_stage|string)[]
-function pipeline.add_runner(name, funs)
+---@param funs (pipeline_stage|string)[] A list of pipline stages to associate to a name
+function pipeline.define(name, funs)
   local ret = {}
   for _, j in pairs(funs) do
     if type(j) == "string" then
@@ -33,29 +35,30 @@ function pipeline.log(...)
   end
 end
 
--- Pipelines are basically a MonadFail.
--- The failure case should correspond to setting an error on the extmark.
-
 ---@class pipeline_input
 ---@field previous any
 ---@field node node
 ---@field draw_number integer
 
----@alias pipeline_stage fun(input: pipeline_input, callback?: fun(ret: any, maybe_defer?: string|nil), error_callback?: fun(msg: string)): any
+---@alias pipeline_callback fun(ret: any, maybe_defer?: string|nil)
+---@alias pipeline_stage fun(input: pipeline_input, callback?: pipeline_callback, error_callback?: fun(msg: string)): any, string?
 
-
+-- Run a pipeline -- a series of functions which are chained together with callbacks.
+-- Should an error occur inside a function, the runner "error" (defined with `pipeline.define`)
+-- is invoked.
+--
 ---@param input pipeline_input
 ---@param stages pipeline_stage[]
 function pipeline.run(input, stages)
   if stages == nil then return end
 
   local function cb(e)
-    local error_callback = pipeline.runners["error"][1]
+    local error_callback = pipeline.runners["error"]
     if error_callback == nil then
       print(e, input)
     else
       input.previous = e
-      error_callback(input)
+      error_callback[1](input)
     end
   end
 
@@ -86,6 +89,49 @@ function pipeline.run(input, stages)
   linker(input.previous)
 end
 
+
+-- Attempt to run pipelines on a list of nodes.
+-- Nodes which are simple files will attempt to run a pipeline based on the suffix of the path
+-- (e.g., ".tex"). If no pipeline is found, it calls the "display" pipeline.
+--
+-- Nodes which contain fenced content attempt to run a pipeline based on the filetype, preceded
+-- by a "#" (e.g., "#python"). If no pipeline exists, it will not be run.
+--
+---@param nodes node[] A list of nodes, each of which gets run through a pipeline
+---@param draw_number integer A node-independed number passed along the pipeline
+function pipeline.pipe_nodes(nodes, draw_number)
+  for _, node in pairs(nodes) do
+    ---@type string
+    local stage_name
+    ---@type string[] | string
+    local value = nil
+    if node.type == "file" then
+      ---@cast node file_node
+      value = path.new(node.filename)
+      if value.suffix == nil then return nil end
+
+      stage_name = value.suffix
+      -- Pipeline exists for suffix
+      if pipeline.runners[stage_name] == nil then
+        stage_name = "display"
+      end
+    else
+      ---@cast node fence_node
+      stage_name = "#" .. node.params.filetype
+      value = node.content
+    end
+
+    pipeline.run(
+      {
+        previous = value,
+        node = node,
+        draw_number = draw_number
+      },
+      pipeline.runners[stage_name]
+    )
+  end
+end
+
 ---@class handle
 
 ---@class pipe
@@ -105,6 +151,7 @@ end
 ---@field cwd? string
 
 -- Wrapper around luv.spawn which automatically sets up pipes.
+-- TODO: Maybe wrap vim.spawn instead of luv.spawn?
 --
 ---@param process string
 ---@param params almost_luv_params The same as the second argument to luv.spawn, but with booleans instead of pipe objects.

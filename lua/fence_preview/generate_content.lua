@@ -1,10 +1,8 @@
 local pipeline = require "fence_preview.pipeline"
 local latex = require "fence_preview.latex"
-local path = require "fence_preview.path"
 
-local generate_content = {}
-
-
+-- Read a file and pass its contents as a list of strings
+--
 ---@type pipeline_stage
 local function read_file(args, callback, error_callback)
   local file_path = args.previous --[[@as path]]
@@ -18,12 +16,14 @@ local function read_file(args, callback, error_callback)
   local content = file:read("a")
   file:close()
 
-  callback(vim.split(content, "\n"))
+  return vim.split(content, "\n")
 end
 
 
+-- Apply folds to a node if it has a preferred height.
+--
 ---@param node node
-function generate_content.refold_node(node)
+local function refold_node(node)
   if node.params == nil or node.params == vim.NIL or node.params.height == nil then return end
 
   -- delete all folds in the range
@@ -39,8 +39,10 @@ function generate_content.refold_node(node)
 end
 
 
+-- Attempt to create or set an image extmark over the node
+--
 ---@type pipeline_stage
-function generate_content.try_draw_extmark(args)
+local function try_draw_extmark(args)
   local image_path = args.previous --[[@as path]]
   local node = args.node
 
@@ -50,7 +52,7 @@ function generate_content.try_draw_extmark(args)
     vim.api.nvim_buf_call(node.buffer, function()
       if vim.b.draw_number ~= args.draw_number then return end
 
-      generate_content.refold_node(node)
+      refold_node(node)
 
       -- Compare the node received against nodes in the current buffer
       for _, last_node in ipairs(fence_preview.last_nodes) do
@@ -74,8 +76,10 @@ function generate_content.try_draw_extmark(args)
 end
 
 
+-- Attempt to create or set an extmark containing an error message over the node
+--
 ---@type pipeline_stage
-function generate_content.try_error_extmark(args)
+local function try_error_extmark(args)
   local message = args.previous
   local node = args.node
 
@@ -106,15 +110,15 @@ function generate_content.try_error_extmark(args)
   end, 0)
 end
 
-pipeline.add_runner("display", {
-  generate_content.try_draw_extmark
+pipeline.define("display", {
+  try_draw_extmark
 })
 
-pipeline.add_runner("error", {
-  generate_content.try_error_extmark
+pipeline.define("error", {
+  try_error_extmark
 })
 
-pipeline.add_runner(".tex", {
+pipeline.define(".tex", {
   latex.write_tex,
   latex.generate_dvi_from_latex,
   latex.generate_svg_from_dvi,
@@ -122,64 +126,26 @@ pipeline.add_runner(".tex", {
   "display"
 })
 
-pipeline.add_runner("#latex", {
+pipeline.define("#latex", {
   latex.write_tex,
   ".tex"
 })
 
-pipeline.add_runner("#math", {
+pipeline.define("#math", {
   latex.add_math_preamble,
   "#latex"
 })
 
-pipeline.add_runner("#gnuplot", {
+pipeline.define("#gnuplot", {
   latex.gnuplot_to_png,
   "display"
 })
 
-pipeline.add_runner(".plt", {
+pipeline.define(".plt", {
   read_file,
   "#gnuplot"
 })
 
-pipeline.add_runner("#python", {
+pipeline.define("#python", {
     latex.run_python
 })
-
-
----@param nodes node[]
-function generate_content.pipe_nodes(nodes, draw_number)
-  for _, node in pairs(nodes) do
-    ---@type string
-    local stage_name
-    ---@type string[] | string
-    local value = nil
-    if node.type == "file" then
-      ---@cast node file_node
-      value = path.new(node.filename)
-      if value.suffix == nil then return nil end
-
-      stage_name = value.suffix
-      -- Pipeline exists for suffix
-      if pipeline.runners[stage_name] == nil then
-        stage_name = "display"
-      end
-    else
-      ---@cast node fence_node
-      stage_name = "#" .. node.params.filetype
-      value = node.content
-    end
-
-    pipeline.run(
-      {
-        previous = value,
-        node = node,
-        draw_number = draw_number
-      },
-      pipeline.runners[stage_name]
-    )
-  end
-end
-
-
-return generate_content

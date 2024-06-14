@@ -7,7 +7,7 @@
 local delimit = require "fence_preview.delimit"
 local side_window = require "fence_preview.side_window"
 local pipeline = require "fence_preview.pipeline"
-local generate_content = require "fence_preview.generate_content"
+local path = require "fence_preview.path"
 
 if false then
   sixel_extmarks = {} ---@diagnostic disable-line
@@ -23,7 +23,7 @@ fence_preview = {
   ---@type integer
   minimum_height = 3,
   pipeline = pipeline,
-  generate_content = generate_content
+  path = path,
 }
 
 vim.api.nvim_create_augroup("FencePreview", { clear = false })
@@ -73,7 +73,7 @@ function fence_preview.reload()
 
   -- Push external content to Python for running
   sixel_extmarks.remove_all()
-  generate_content.pipe_nodes(
+  pipeline.pipe_nodes(
     vim.tbl_filter(
       function(node) return node.id ~= vim.b.fence_preview_inside_node end,
       nodes
@@ -147,7 +147,7 @@ function fence_preview.bind()
 
         vim.wo.foldmethod = "manual"
 
-        generate_content.pipe_nodes(
+        pipeline.pipe_nodes(
           vim.tbl_filter(
             function(node) return node.id == vim.b.fence_preview_inside_node end,
             fence_preview.last_nodes

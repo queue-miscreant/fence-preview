@@ -68,14 +68,10 @@ Plugin highlights
 TODOs
 -----
 
-- More (configurable) pipeline-like architecture
-    - Polyfill newer vim functions, rewrite to use vim.spawn wrapper
+- Lazier redraws
 - Better splits
     - Preambles for fence content (TeX for math so that syntax works properly, Python imports(?))
-    - Height can be controlled by a comment in the split
 - Default LaTeX display is not eye-searing
     - Simple: white text on black
     - Difficult: configurable, white text on configurable
         - use `background` option by default
-    - Hide content with highlights
-    - Highlight removed when cursor crosses fence

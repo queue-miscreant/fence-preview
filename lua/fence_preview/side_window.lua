@@ -4,7 +4,7 @@
 -- the result in the main buffer.
 
 local delimit = require "fence_preview.delimit"
-local generate_content = require "fence_preview.generate_content"
+local pipeline = require "fence_preview.generate_content"
 
 local side_window = {}
 
@@ -56,7 +56,7 @@ function side_window.enter_window(node)
       )
 
       vim.b.draw_number = (vim.b.draw_number or 0) + 1
-      generate_content.pipe_nodes(
+      pipeline.pipe_nodes(
         { node },
         vim.b.draw_number
       )
