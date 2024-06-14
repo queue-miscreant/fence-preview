@@ -1,4 +1,5 @@
-local pipeline = require("fence_preview.pipeline")
+local pipeline = require "fence_preview.pipeline"
+local path = require "fence_preview.path"
 
 MATH_START = [[
 \documentclass[20pt, preview]{standalone}
@@ -15,7 +16,6 @@ MATH_END = [[
 ]]
 
 local latex = {
-  tempdir = vim.fn.fnamemodify(vim.fn.tempname(), ":h")
 }
 
 
@@ -28,32 +28,6 @@ local latex = {
 -- if dvisvgm_path == nil then
 --   error("Could not find dvisvgm!")
 -- end
-
----@alias path string
-
-local with_suffix
-local join_path
-if vim.fs ~= nil then
-  ---@param path string
-  ---@param suffix string
-  ---@return string
-  function with_suffix(path, suffix)
-    local name = (vim.fs.basename(path)):match("([^.]*)%.?(%w*)$")
-    local parent = vim.fs.dirname(path)
-    if parent == "." then
-      return name .. suffix
-    end
-    return vim.fs.joinpath(parent, name .. suffix)
-  end
-
-  join_path = vim.fs.joinpath
-else
-  join_path = function(...)
-    return vim.fn.simplify(table.concat({ ... }, "/"))
-  end
-end
-
--- latex.with_suffix = with_suffix
 
 
 ---@type pipeline_stage
@@ -70,10 +44,10 @@ end
 ---@type pipeline_stage
 function latex.write_tex(args, callback, error_callback)
   -- create a new tex file containing the equation
-  local tex_path = join_path(latex.tempdir, with_suffix(args.node.hash, ".tex"))
+  local tex_path = path.new_temp(args.node.hash, ".tex")
 
   -- No need to write the file again, continue with pipeline
-  if vim.fn.filereadable(tex_path) ~= 0 then return tex_path end
+  if tex_path:exists() then return tex_path end
 
   -- Bad argument
   if
@@ -84,7 +58,7 @@ function latex.write_tex(args, callback, error_callback)
     return
   end
 
-  local file = io.open(tex_path, "w")
+  local file = io.open(tex_path.path, "w")
   if file == nil then
     error_callback(("Could not open file `%s`"):format(tex_path))
     return
@@ -136,19 +110,22 @@ end
 --
 ---@type pipeline_stage
 function latex.generate_dvi_from_latex(args, callback, error_callback)
-  local path = args.previous --[[@as path]]
-  if vim.fn.filereadable(path) == 0 then error_callback("LaTeX file not found") return end
+  local tex_path = args.previous --[[@as path]]
+  if tex_path.exists == nil or not tex_path:exists() then
+    error_callback("LaTeX file not found")
+    return
+  end
 
   -- use latex to generate a dvi
-  local dvi_path = with_suffix(path, ".dvi")
+  local dvi_path = tex_path:with_suffix(".dvi")
   -- Skip if the dvi already exists
-  if vim.fn.filereadable(dvi_path) ~= 0 then return dvi_path end
+  if dvi_path:exists() then return dvi_path end
 
   pipeline.subprocess("latex",
     {
-      args = { with_suffix(path, ".tex") },
+      args = { tex_path.path },
       stdio = { false, true, true },
-      cwd = latex.tempdir,
+      cwd = path.tempdir,
     },
     function(ret)
       pipeline.log(ret.stdout)
@@ -172,7 +149,7 @@ function latex.generate_dvi_from_latex(args, callback, error_callback)
         return
       end
 
-      callback(with_suffix(path, ".dvi"))
+      callback(dvi_path)
     end,
     function()
       error_callback("LaTeX timed out!")
@@ -190,20 +167,20 @@ end
 --
 ---@type pipeline_stage
 function latex.generate_svg_from_dvi(args, callback, error_callback)
-  local path = args.previous --[[@as path]]
-  if vim.fn.filereadable(path) == 0 then error_callback("DVI file not found") return end
+  local dvi_path = args.previous --[[@as path]]
+  if dvi_path.exists == nil or not dvi_path:exists() then error_callback("DVI file not found") return end
 
   -- convert the dvi to a svg file with the woff font format
-  local svg_path = with_suffix(path, ".svg")
+  local svg_path = dvi_path:with_suffix(".svg")
 
   -- Skip if the SVG already exists
-  if vim.fn.filereadable(svg_path) ~= 0 then return svg_path end
+  if svg_path:exists() then return svg_path end
 
   pipeline.subprocess("dvisvgm",
     {
-      args ={ "-b", "1", "--no-fonts", "--zoom=1.0", path },
+      args ={ "-b", "1", "--no-fonts", "--zoom=10.0", dvi_path.path },
       stdio = { false, true, true },
-      cwd = latex.tempdir,
+      cwd = path.tempdir,
     },
     function(ret)
       -- TODO
@@ -233,20 +210,20 @@ end
 --
 ---@type pipeline_stage
 function latex.rasterize(args, callback, error_callback)
-  local path = args.previous --[[@as path]]
-  if vim.fn.filereadable(path) == 0 then error_callback("SVG file not found") return end
+  local svg_path = args.previous --[[@as path]]
+  if not svg_path.exists or not svg_path:exists() then error_callback("SVG file not found") return end
 
   -- convert the dvi to a svg file with the woff font format
-  local png_path = with_suffix(path, ".png")
+  local png_path = svg_path:with_suffix(".png")
 
   -- Skip if the PNG already exists
-  if vim.fn.filereadable(png_path) ~= 0 then return png_path end
+  if png_path:exists() then return png_path end
 
   pipeline.subprocess("magick",
     {
-      args ={ "-density", "600", path, png_path },
+      args ={ "-density", "600", svg_path.path, png_path.path },
       stdio = { false, true, true },
-      cwd = latex.tempdir,
+      cwd = path.tempdir,
     },
     function(ret)
       -- TODO
@@ -277,7 +254,7 @@ function latex.run_python(args, callback, error_callback)
     {
       args ={ "-" },
       stdio = { true, true, true },
-      cwd = latex.tempdir,
+      cwd = path.tempdir,
     },
     function(ret)
       if ret.code ~= 0 then
@@ -326,18 +303,15 @@ end
 ---@type pipeline_stage
 function latex.gnuplot_to_png(args, callback, error_callback)
   local content = args.previous --[[@as string[] ]]
-  local path = join_path(
-    latex.tempdir,
-    with_suffix(args.node.hash, ".png")
-  )
+  local png_path = path.new_temp(args.node.hash, ".png")
 
-  local preamble = ("set output '%s'\nset terminal png\n"):format(path)
+  local preamble = ("set output '%s'\nset terminal png\n"):format(png_path)
 
   local _, stdin = pipeline.subprocess("gnuplot",
     {
       args ={ "-" },
       stdio = { true, false, true },
-      cwd = latex.tempdir,
+      cwd = path.tempdir,
     },
     function(ret)
       if ret.code ~= 0 then
@@ -349,7 +323,7 @@ function latex.gnuplot_to_png(args, callback, error_callback)
         return
       end
 
-      callback(path)
+      callback(png_path)
     end,
     function()
       error_callback("gnuplot timed out!")

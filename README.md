@@ -70,7 +70,6 @@ TODOs
 
 - More (configurable) pipeline-like architecture
     - Polyfill newer vim functions, rewrite to use vim.spawn wrapper
-    - Pipeline files run in same directory as buffer file, or `/tmp/*` if no file
 - Better splits
     - Preambles for fence content (TeX for math so that syntax works properly, Python imports(?))
     - Height can be controlled by a comment in the split

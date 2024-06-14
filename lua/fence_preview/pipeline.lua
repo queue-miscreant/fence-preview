@@ -46,7 +46,7 @@ end
 
 ---@param input pipeline_input
 ---@param stages pipeline_stage[]
-local function run_pipeline(input, stages)
+function pipeline.run(input, stages)
   if stages == nil then return end
 
   local function cb(e)
@@ -86,8 +86,6 @@ local function run_pipeline(input, stages)
   linker(input.previous)
 end
 
-pipeline.run = run_pipeline
-
 ---@class handle
 
 ---@class pipe
@@ -101,10 +99,15 @@ pipeline.run = run_pipeline
 ---@field stdout string
 ---@field stderr string
 
+---@class almost_luv_params
+---@field args string[]
+---@field stdio? [boolean, boolean, boolean]
+---@field cwd? string
+
 -- Wrapper around luv.spawn which automatically sets up pipes.
 --
 ---@param process string
----@param params table The same as the second argument to luv.spawn, but with booleans instead of pipe objects.
+---@param params almost_luv_params The same as the second argument to luv.spawn, but with booleans instead of pipe objects.
 ---@param callback fun(ret: subprocess_return) A callback function which contains stdout and stderr content
 ---@param callback_timeout? fun() A callback function which is run if the process is still active after `pipeline.subprocess_timeout_ms`
 ---@return handle|nil, pipe|nil
@@ -115,10 +118,13 @@ function pipeline.subprocess(process, params, callback, callback_timeout)
   local stdin = nil
   local stdout = nil
   local stderr = nil
-  if stdio[1] then stdin = vim.loop.new_pipe() --[[@as pipe]] end
-  if stdio[2] then stdout = vim.loop.new_pipe() --[[@as pipe]] end
-  if stdio[3] then stderr = vim.loop.new_pipe() --[[@as pipe]] end
+  if stdio then
+    if stdio[1] then stdin = vim.loop.new_pipe() --[[@as pipe]] end
+    if stdio[2] then stdout = vim.loop.new_pipe() --[[@as pipe]] end
+    if stdio[3] then stderr = vim.loop.new_pipe() --[[@as pipe]] end
+  end
 
+  ---@diagnostic disable-next-line
   params.stdio = { stdin, stdout, stderr }
 
   local stdout_content = {}

@@ -1,16 +1,17 @@
 local pipeline = require "fence_preview.pipeline"
 local latex = require "fence_preview.latex"
+local path = require "fence_preview.path"
 
 local generate_content = {}
 
 
 ---@type pipeline_stage
 local function read_file(args, callback, error_callback)
-  local path = args.previous --[[@as path]]
+  local file_path = args.previous --[[@as path]]
 
-  local file = io.open(args.previous)
+  local file = io.open(file_path.path)
   if file == nil then
-    error_callback(("Could not read file `%s`"):format(path))
+    error_callback(("Could not read file `%s`"):format(file_path))
     return
   end
 
@@ -40,10 +41,10 @@ end
 
 ---@type pipeline_stage
 function generate_content.try_draw_extmark(args)
-  local path = args.previous
+  local image_path = args.previous --[[@as path]]
   local node = args.node
 
-  if vim.fn.filereadable(tostring(path)) == 0 then return end
+  if image_path.exists == nil or not image_path:exists() then return end
 
   vim.defer_fn(function()
     vim.api.nvim_buf_call(node.buffer, function()
@@ -60,14 +61,14 @@ function generate_content.try_draw_extmark(args)
           and last_node_extmark ~= nil
         then
           if last_node.hash ~= node.hash then
-            sixel_extmarks.change_content(last_node_extmark, path)
+            sixel_extmarks.change_content(last_node_extmark, image_path.path)
             sixel_extmarks.move(last_node_extmark, node.range[1] - 1, node.range[2] - 1)
             return
           end
         end
       end
 
-      fence_preview.extmark_map[tostring(node.id)] = sixel_extmarks.create(node.range[1] - 1, node.range[2] - 1, path)
+      fence_preview.extmark_map[tostring(node.id)] = sixel_extmarks.create(node.range[1] - 1, node.range[2] - 1, image_path.path)
     end)
   end, 0)
 end
@@ -94,13 +95,13 @@ function generate_content.try_error_extmark(args)
           node.id == last_node.id
           and last_node_extmark ~= nil
         then
-          sixel_extmarks.set_extmark_error(last_node_extmark, message)
+          sixel_extmarks.set_extmark_error(last_node_extmark, tostring(message))
           sixel_extmarks.move(last_node_extmark, node.range[1] - 1, node.range[2] - 1)
           return
         end
       end
 
-      fence_preview.extmark_map[tostring(node.id)] = sixel_extmarks.create_error(node.range[1] - 1, node.range[2] - 1, message)
+      fence_preview.extmark_map[tostring(node.id)] = sixel_extmarks.create_error(node.range[1] - 1, node.range[2] - 1, tostring(message))
     end)
   end, 0)
 end
@@ -117,7 +118,7 @@ pipeline.add_runner(".tex", {
   latex.write_tex,
   latex.generate_dvi_from_latex,
   latex.generate_svg_from_dvi,
-  latex.rasterize,
+  -- latex.rasterize,
   "display"
 })
 
@@ -146,27 +147,6 @@ pipeline.add_runner("#python", {
 })
 
 
----@return pipeline_stage[] | nil
-local function extension_to_stages(args, callback)
-  local _, extension = (vim.fs.basename(args.node.filename)):match("([^.]*)%.?(%w*)$")
-  if extension == nil then return nil end
-
-  local try_get_pipeline = "." .. extension
-  local stages = pipeline.runners[try_get_pipeline]
-  -- Pipeline exists for extension
-  if stages ~= nil then
-    callback(args.previous, try_get_pipeline)
-  else
-    callback(args.previous, "display")
-  end
-end
-
-
-pipeline.add_runner("extension", {
-    extension_to_stages
-})
-
-
 ---@param nodes node[]
 function generate_content.pipe_nodes(nodes, draw_number)
   for _, node in pairs(nodes) do
@@ -176,8 +156,14 @@ function generate_content.pipe_nodes(nodes, draw_number)
     local value = nil
     if node.type == "file" then
       ---@cast node file_node
-      stage_name = "extension"
-      value = vim.fs.normalize(node.filename) -- TODO
+      value = path.new(node.filename)
+      if value.suffix == nil then return nil end
+
+      stage_name = value.suffix
+      -- Pipeline exists for suffix
+      if pipeline.runners[stage_name] == nil then
+        stage_name = "display"
+      end
     else
       ---@cast node fence_node
       stage_name = "#" .. node.params.filetype
