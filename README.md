@@ -69,7 +69,6 @@ TODOs
 -----
 
 - More (configurable) pipeline-like architecture
-    - Refactor pipelines to be local
     - Polyfill newer vim functions, rewrite to use vim.spawn wrapper
     - Pipeline files run in same directory as buffer file, or `/tmp/*` if no file
 - Better splits

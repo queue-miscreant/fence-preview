@@ -1,11 +1,26 @@
 local pipeline = {
+  ---@type {[string]: pipeline_stage[]}
   runners = {},
   _logs = {},
   subprocess_timeout_ms = 5000,
 }
 
-function pipeline.add_runner(name, fun)
-  pipeline.runners[name] = fun
+-- Declare a runner with a name. The runner should be a list of pipeline stages, or
+-- a string to a pipeline stage which already exists.
+--
+---@param funs (pipeline_stage|string)[]
+function pipeline.add_runner(name, funs)
+  local ret = {}
+  for _, j in pairs(funs) do
+    if type(j) == "string" then
+      local lookup_stages = pipeline.runners[j]
+      if lookup_stages == nil then error(("Could not create pipeline `%s`"):format(j)) end
+      vim.list_extend(ret, lookup_stages)
+    else
+      table.insert(ret, j)
+    end
+  end
+  pipeline.runners[name] = ret
 end
 
 function pipeline.log(...)
@@ -26,41 +41,49 @@ end
 ---@field node node
 ---@field draw_number integer
 
----@alias pipeline_stage fun(input: pipeline_input, callback: fun(ret: any), error_callback: fun(msg: string)): any
+---@alias pipeline_stage fun(input: pipeline_input, callback?: fun(ret: any, maybe_defer?: string|nil), error_callback?: fun(msg: string)): any
 
 
 ---@param input pipeline_input
-local function run_pipeline(input, stages, error_callback)
+---@param stages pipeline_stage[]
+local function run_pipeline(input, stages)
+  if stages == nil then return end
+
   local function cb(e)
+    local error_callback = pipeline.runners["error"][1]
     if error_callback == nil then
       print(e, input)
     else
-      error_callback(e, input)
+      input.previous = e
+      error_callback(input)
     end
   end
 
-  local stage = 1
-  local function linker(output)
-    stage = stage + 1
-    ---@type pipeline_stage
-    local next_stage = stages[stage]
-    if next_stage == nil then return end
-
-    input.previous = output
-    local safe, next_value = pcall(function() return next_stage(input, linker, cb) end)
-    while next_value ~= nil do
-      if not safe then error_callback(next_value, input) return end
-      stage = stage + 1
+  local stage = 0
+  local function linker(output, maybe_defer)
+    local safe = true
+    local next_value = output
+    -- Keep trying to run callbacks as long as we're synchronous
+    while true do
+      if not safe then cb(next_value) return end
+      if maybe_defer == nil then
+        stage = stage + 1
+      elseif type(maybe_defer) == "string" then
+        stage = 1
+        stages = pipeline.runners[maybe_defer]
+      end
       ---@type pipeline_stage
-      next_stage = stages[stage]
+      local next_stage = stages[stage]
       if next_stage == nil then return end
 
       input.previous = next_value
-      safe, next_value = pcall(function() return next_stage(input, linker, cb) end)
+      safe, next_value, maybe_defer = pcall(function() return next_stage(input, linker, cb) end)
+
+      if next_value == nil then return end
     end
   end
 
-  stages[1](input, linker, cb)
+  linker(input.previous)
 end
 
 pipeline.run = run_pipeline

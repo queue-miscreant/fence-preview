@@ -4,6 +4,23 @@ local latex = require "fence_preview.latex"
 local generate_content = {}
 
 
+---@type pipeline_stage
+local function read_file(args, callback, error_callback)
+  local path = args.previous --[[@as path]]
+
+  local file = io.open(args.previous)
+  if file == nil then
+    error_callback(("Could not read file `%s`"):format(path))
+    return
+  end
+
+  local content = file:read("a")
+  file:close()
+
+  callback(vim.split(content, "\n"))
+end
+
+
 ---@param node node
 function generate_content.refold_node(node)
   if node.params == nil or node.params == vim.NIL or node.params.height == nil then return end
@@ -26,7 +43,7 @@ function generate_content.try_draw_extmark(args)
   local path = args.previous
   local node = args.node
 
-  if vim.fn.filereadable(path) == 0 then return end
+  if vim.fn.filereadable(tostring(path)) == 0 then return end
 
   vim.defer_fn(function()
     vim.api.nvim_buf_call(node.buffer, function()
@@ -56,9 +73,9 @@ function generate_content.try_draw_extmark(args)
 end
 
 
----@param message string
----@param args pipeline_input
-function generate_content.try_error_extmark(message, args)
+---@type pipeline_stage
+function generate_content.try_error_extmark(args)
+  local message = args.previous
   local node = args.node
 
   pipeline.log(message)
@@ -88,126 +105,84 @@ function generate_content.try_error_extmark(message, args)
   end, 0)
 end
 
+pipeline.add_runner("display", {
+  generate_content.try_draw_extmark
+})
 
----@type {[string]: fun(params: fence_params): pipeline_stage[] }
+pipeline.add_runner("error", {
+  generate_content.try_error_extmark
+})
 
--- TODO: versions for filenames only
+pipeline.add_runner(".tex", {
+  latex.write_tex,
+  latex.generate_dvi_from_latex,
+  latex.generate_svg_from_dvi,
+  latex.rasterize,
+  "display"
+})
 
-pipeline.add_runner("latex", function(_)
-  return {
-    latex.write_tex,
-    latex.generate_dvi_from_latex,
-    latex.generate_svg_from_dvi,
-    latex.rasterize,
-    generate_content.try_draw_extmark
-  }
-end)
+pipeline.add_runner("#latex", {
+  latex.write_tex,
+  ".tex"
+})
 
-pipeline.add_runner("math", function(params)
-  return {
-    latex.add_math_preamble,
-    unpack(pipeline.runners.latex(params)) ---@diagnostic disable-line
-  }
-end)
+pipeline.add_runner("#math", {
+  latex.add_math_preamble,
+  "#latex"
+})
 
-pipeline.add_runner("gnuplot", function(_)
-  return {
-    latex.gnuplot_to_png,
-    generate_content.try_draw_extmark
-  }
-end)
+pipeline.add_runner("#gnuplot", {
+  latex.gnuplot_to_png,
+  "display"
+})
 
+pipeline.add_runner(".plt", {
+  read_file,
+  "#gnuplot"
+})
 
-pipeline.add_runner("python", function(params)
-  local ret = {
+pipeline.add_runner("#python", {
     latex.run_python
-  }
-
-  if vim.list_contains(params.others, "math") then
-    -- Chain into math pipeline
-    params["math"] = nil
-    local math_pipeline = pipeline.runners.math(params)
-    vim.list_extend(ret, math_pipeline)
-  elseif vim.list_contains(params.others, "latex") then
-    -- Chain into LaTeX pipeline
-    params["latex"] = nil
-    local latex_pipeline = pipeline.runners.latex(params)
-    vim.list_extend(ret, latex_pipeline)
-  elseif vim.list_contains(params.others, "image") then
-    -- Display image
-    table.insert(ret, generate_content.try_draw_extmark)
-  else
-    -- TODO
-  end
-
-  return ret
-end)
+})
 
 
----@type pipeline_stage
-local function read_file(args, callback, error_callback)
-  local path = args.previous --[[@as path]]
-
-  local file = io.open(args.previous)
-  if file == nil then
-    error_callback(("Could not read file `%s`"):format(path))
-    return
-  end
-
-  local content = file:read("a")
-  file:close()
-
-  callback(vim.split(content, "\n"))
-end
-
-
----@param node file_node
 ---@return pipeline_stage[] | nil
-local function extension_to_stages(node)
-  local _, extension = (vim.fs.basename(node.filename)):match("([^.]*)%.?(%w*)$")
+local function extension_to_stages(args, callback)
+  local _, extension = (vim.fs.basename(args.node.filename)):match("([^.]*)%.?(%w*)$")
   if extension == nil then return nil end
 
-  if extension == "plt" then -- gnuplot
-    return {
-      read_file,
-      latex.gnuplot_to_png,
-      generate_content.try_draw_extmark
-    }
-  elseif extension == "tex" then -- LaTeX
-    return {
-      latex.generate_dvi_from_latex,
-      latex.generate_svg_from_dvi,
-      latex.rasterize,
-      generate_content.try_draw_extmark
-    }
+  local try_get_pipeline = "." .. extension
+  local stages = pipeline.runners[try_get_pipeline]
+  -- Pipeline exists for extension
+  if stages ~= nil then
+    callback(args.previous, try_get_pipeline)
   else
-    return { generate_content.try_draw_extmark }
+    callback(args.previous, "display")
   end
-
 end
+
+
+pipeline.add_runner("extension", {
+    extension_to_stages
+})
 
 
 ---@param nodes node[]
 function generate_content.pipe_nodes(nodes, draw_number)
   for _, node in pairs(nodes) do
-    ---@type pipeline_stage[] | nil
-    local stages = nil
+    ---@type string
+    local stage_name
     ---@type string[] | string
     local value = nil
     if node.type == "file" then
       ---@cast node file_node
-      stages = extension_to_stages(node)
+      stage_name = "extension"
       value = vim.fs.normalize(node.filename) -- TODO
     else
       ---@cast node fence_node
-      local stage_builder = pipeline.runners[node.params.filetype]
-      if stage_builder == nil then goto continue end
-
-      stages = stage_builder(node.params)
+      stage_name = "#" .. node.params.filetype
       value = node.content
     end
-
-    if stages == nil then goto continue end
 
     pipeline.run(
       {
@@ -215,11 +190,8 @@ function generate_content.pipe_nodes(nodes, draw_number)
         node = node,
         draw_number = draw_number
       },
-      stages,
-      generate_content.try_error_extmark
+      pipeline.runners[stage_name]
     )
-
-    ::continue::
   end
 end
 

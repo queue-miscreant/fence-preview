@@ -288,7 +288,24 @@ function latex.run_python(args, callback, error_callback)
         return
       end
 
-      callback(vim.split(ret.stdout, "\n"))
+      local params = args.node.params
+      local next_stage = nil
+      if vim.list_contains(params.others, "math") then
+        -- Chain into math pipeline
+        params["math"] = nil
+        next_stage = "#math"
+      elseif vim.list_contains(params.others, "latex") then
+        -- Chain into LaTeX pipeline
+        params["latex"] = nil
+        next_stage = "#latex"
+      elseif vim.list_contains(params.others, "image") then
+        -- Display image
+        next_stage = "display"
+      else
+        -- TODO
+      end
+
+      callback(vim.split(ret.stdout, "\n"), next_stage)
     end,
     function()
       error_callback("Python timed out!")
