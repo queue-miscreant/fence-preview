@@ -4,7 +4,7 @@
 -- the result in the main buffer.
 
 local delimit = require "fence_preview.delimit"
-local pipeline = require "fence_preview.generate_content"
+local pipeline = require "fence_preview.pipeline"
 
 local side_window = {}
 

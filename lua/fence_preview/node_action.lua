@@ -1,6 +1,8 @@
 local pipeline = require "fence_preview.pipeline"
 local latex = require "fence_preview.latex"
 
+local node_action = {}
+
 -- Read a file and pass its contents as a list of strings
 --
 ---@type pipeline_stage
@@ -23,7 +25,7 @@ end
 -- Apply folds to a node if it has a preferred height.
 --
 ---@param node node
-local function refold_node(node)
+function node_action.refold(node)
   if node.params == nil or node.params == vim.NIL or node.params.height == nil then return end
 
   -- delete all folds in the range
@@ -42,7 +44,7 @@ end
 -- Attempt to create or set an image extmark over the node
 --
 ---@type pipeline_stage
-local function try_draw_extmark(args)
+function node_action.try_draw_extmark(args)
   local image_path = args.previous --[[@as path]]
   local node = args.node
 
@@ -52,7 +54,7 @@ local function try_draw_extmark(args)
     vim.api.nvim_buf_call(node.buffer, function()
       if vim.b.draw_number ~= args.draw_number then return end
 
-      refold_node(node)
+      node_action.refold(node)
 
       -- Compare the node received against nodes in the current buffer
       for _, last_node in ipairs(fence_preview.last_nodes) do
@@ -79,7 +81,7 @@ end
 -- Attempt to create or set an extmark containing an error message over the node
 --
 ---@type pipeline_stage
-local function try_error_extmark(args)
+function node_action.try_error_extmark(args)
   local message = args.previous
   local node = args.node
 
@@ -111,11 +113,11 @@ local function try_error_extmark(args)
 end
 
 pipeline.define("display", {
-  try_draw_extmark
+  node_action.try_draw_extmark
 })
 
 pipeline.define("error", {
-  try_error_extmark
+  node_action.try_error_extmark
 })
 
 pipeline.define(".tex", {
@@ -149,3 +151,5 @@ pipeline.define(".plt", {
 pipeline.define("#python", {
     latex.run_python
 })
+
+return node_action

@@ -5,6 +5,7 @@
 -- done without IPC overhead.
 
 local delimit = require "fence_preview.delimit"
+local node_action = require "fence_preview.node_action"
 local side_window = require "fence_preview.side_window"
 local pipeline = require "fence_preview.pipeline"
 local path = require "fence_preview.path"
@@ -15,7 +16,6 @@ end
 
 ---@diagnostic disable-next-line
 fence_preview = {
-  -- TODO: move these to buffer-local
   ---@type node[]
   last_nodes = {},
   ---@type {[string]: integer}
@@ -140,7 +140,7 @@ function fence_preview.bind()
           vim.w.fence_preview_last_line = new_cursor
 
           if node ~= nil and not cursor_in_node(node, new_cursor) then
-            generate_content.refold_node(node)
+            node_action.refold(node)
           end
           return
         end
@@ -170,7 +170,6 @@ function fence_preview.bind()
       if node == nil then return end
       if node.type == "file" then return end
 
-      -- TODO: cook the node into the proper format
       side_window.enter_window(node) ---@diagnostic disable-line
     end,
     {}
@@ -183,5 +182,6 @@ function fence_preview.bind()
     {}
   )
 
+  fence_preview.reload()
   vim.b.fence_preview_bound_autocmds = true
 end
