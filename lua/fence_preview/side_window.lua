@@ -78,12 +78,16 @@ function side_window.enter_window(node)
       local offset = node.range[1] + num_lines + 1 - node.range[2]
       node.range[2] = node.range[2] + offset
 
-      for _, other_node in pairs(fence_preview.last_nodes) do
+      -- Retrieve tree from buffer
+      local last_nodes = vim.api.nvim_buf_get_var(current_buffer, "last_nodes")
+      for _, other_node in pairs(last_nodes) do
         if other_node.range[1] > node.range[2] then
           other_node.range[1] = other_node.range[1] + offset
           other_node.range[2] = other_node.range[2] + offset
         end
       end
+      -- Write variable back to buffer
+      vim.api.nvim_buf_set_var(current_buffer, "last_nodes", last_nodes)
     end
   })
 

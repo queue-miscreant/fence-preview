@@ -57,9 +57,9 @@ function node_action.try_draw_extmark(args)
       node_action.refold(node)
 
       -- Compare the node received against nodes in the current buffer
-      for _, last_node in ipairs(fence_preview.last_nodes) do
+      for _, last_node in ipairs(vim.b.last_nodes) do
         -- Try to reuse extmark
-        local last_node_extmark = fence_preview.extmark_map[tostring(last_node.id)]
+        local last_node_extmark = vim.b.extmark_map[tostring(last_node.id)]
         if
           node.id == last_node.id
           and last_node_extmark ~= nil
@@ -72,7 +72,7 @@ function node_action.try_draw_extmark(args)
         end
       end
 
-      fence_preview.extmark_map[tostring(node.id)] = sixel_extmarks.create(node.range[1] - 1, node.range[2] - 1, image_path.path)
+      vim.b.extmark_map[tostring(node.id)] = sixel_extmarks.create(node.range[1] - 1, node.range[2] - 1, image_path.path)
     end)
   end, 0)
 end
@@ -94,9 +94,9 @@ function node_action.try_error_extmark(args)
       if vim.b.draw_number ~= args.draw_number then return end
 
       -- Compare the node received against nodes in the current buffer
-      for _, last_node in ipairs(fence_preview.last_nodes) do
+      for _, last_node in ipairs(vim.b.last_nodes) do
         -- Try to reuse extmark
-        local last_node_extmark = fence_preview.extmark_map[tostring(last_node.id)]
+        local last_node_extmark = vim.b.extmark_map[tostring(last_node.id)]
         if
           node.id == last_node.id
           and last_node_extmark ~= nil
@@ -107,7 +107,7 @@ function node_action.try_error_extmark(args)
         end
       end
 
-      fence_preview.extmark_map[tostring(node.id)] = sixel_extmarks.create_error(node.range[1] - 1, node.range[2] - 1, tostring(message))
+      vim.b.extmark_map[tostring(node.id)] = sixel_extmarks.create_error(node.range[1] - 1, node.range[2] - 1, tostring(message))
     end)
   end, 0)
 end

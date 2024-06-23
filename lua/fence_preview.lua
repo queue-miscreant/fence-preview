@@ -1,8 +1,7 @@
 -- fence_preview.lua
 --
--- Lua callbacks for the Python backend
--- Generally ensures that "fast" callbacks such as creating new extmarks
--- done without IPC overhead.
+-- Autocommands for building a list of processable content and asynchronously rendering
+-- said content into extmarks.
 
 local delimit = require "fence_preview.delimit"
 local node_action = require "fence_preview.node_action"
@@ -16,10 +15,6 @@ end
 
 ---@diagnostic disable-next-line
 fence_preview = {
-  ---@type node[]
-  last_nodes = {},
-  ---@type {[string]: integer}
-  extmark_map = {},
   ---@type integer
   minimum_height = 3,
   pipeline = pipeline,
@@ -75,7 +70,7 @@ function fence_preview.reload()
 
   local no_process = {}
 
-  for _, prev_node in pairs(fence_preview.last_nodes) do
+  for _, prev_node in pairs(vim.b.last_nodes) do
     for _, node in pairs(nodes) do
       if compare_nodes(node, prev_node) then
         no_process[tostring(node.id)] = true
@@ -83,8 +78,8 @@ function fence_preview.reload()
       end
     end
     -- Node which no longer exists
-    sixel_extmarks.remove(fence_preview.extmark_map[tostring(prev_node.id)])
-    fence_preview.extmark_map[tostring(prev_node.id)] = nil
+    sixel_extmarks.remove(vim.b.extmark_map[tostring(prev_node.id)])
+    vim.b.extmark_map[tostring(prev_node.id)] = nil
 
     ::matched::
   end
@@ -111,7 +106,7 @@ function fence_preview.reload()
     vim.b.draw_number
   )
 
-  fence_preview.last_nodes = nodes
+  vim.b.last_nodes = nodes
 end
 
 
@@ -165,7 +160,7 @@ function fence_preview.bind()
           -- Attempt to re-fold the node if we're in normal mode
           if vim.fn.mode():sub(1, 1) ~= "n" then return end
 
-          local node = node_under_cursor(fence_preview.last_nodes, vim.w.fence_preview_last_line or -1)
+          local node = node_under_cursor(vim.b.last_nodes, vim.w.fence_preview_last_line or -1)
           local new_cursor = vim.fn.line(".")
           vim.w.fence_preview_last_line = new_cursor
 
@@ -180,7 +175,7 @@ function fence_preview.bind()
         pipeline.pipe_nodes(
           vim.tbl_filter(
             function(node) return node.id == vim.b.fence_preview_inside_node end,
-            fence_preview.last_nodes
+            vim.b.last_nodes
           ),
           vim.b.draw_number
         )
@@ -196,7 +191,7 @@ function fence_preview.bind()
     function()
       if vim.fn.mode():sub(1, 1) ~= "n" then return end
 
-      local node = node_under_cursor(fence_preview.last_nodes, vim.fn.line("."))
+      local node = node_under_cursor(vim.b.last_nodes, vim.fn.line("."))
       if node == nil then return end
       if node.type == "file" then return end
 
@@ -212,6 +207,9 @@ function fence_preview.bind()
     {}
   )
 
-  fence_preview.reload()
+  vim.b.last_nodes = {}
+  vim.b.extmark_map = {}
   vim.b.fence_preview_bound_autocmds = true
+
+  fence_preview.reload()
 end
