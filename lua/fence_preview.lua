@@ -52,6 +52,17 @@ local function node_under_cursor(nodes, cursor_line)
   return nil
 end
 
+---@param node1 node
+---@param node2 node
+local function compare_nodes(node1, node2)
+  -- Nodes have the same content and the same range
+  return (
+    node1.hash == node2.hash
+    and node1.range[1] == node2.range[1]
+    and node1.range[2] == node2.range[2]
+  )
+end
+
 
 function fence_preview.reload()
   vim.b.draw_number = (vim.b.draw_number or 0) + 1
@@ -62,6 +73,22 @@ function fence_preview.reload()
 
   local nodes = delimit.generate_nodes(current_lines, current_buffer)
 
+  local no_process = {}
+
+  for _, prev_node in pairs(fence_preview.last_nodes) do
+    for _, node in pairs(nodes) do
+      if compare_nodes(node, prev_node) then
+        no_process[tostring(node.id)] = true
+        goto matched
+      end
+    end
+    -- Node which no longer exists
+    sixel_extmarks.remove(fence_preview.extmark_map[tostring(prev_node.id)])
+    fence_preview.extmark_map[tostring(prev_node.id)] = nil
+
+    ::matched::
+  end
+
   -- Cursor
   vim.b.fence_preview_inside_node = nil
   local cursor_node = node_under_cursor(nodes, vim.fn.line("."))
@@ -71,11 +98,14 @@ function fence_preview.reload()
 
   vim.wo.foldmethod = "manual"
 
-  -- Push external content to Python for running
-  sixel_extmarks.remove_all()
   pipeline.pipe_nodes(
     vim.tbl_filter(
-      function(node) return node.id ~= vim.b.fence_preview_inside_node end,
+      function(node)
+        return (
+          node.id ~= vim.b.fence_preview_inside_node
+          and no_process[tostring(node.id)] == nil
+        )
+      end,
       nodes
     ),
     vim.b.draw_number

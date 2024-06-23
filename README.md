@@ -68,8 +68,8 @@ Plugin highlights
 TODOs
 -----
 
-- Lazier redraws
 - Make data retained by plugin local to the buffer it comes from
+- Some pipelines need to not be automatic (Python) 
 - Better splits
     - Preambles for fence content (TeX for math so that syntax works properly, Python imports(?))
 - Default LaTeX display is not eye-searing
