@@ -72,13 +72,19 @@ function fence_preview.reload()
 
   for _, prev_node in pairs(vim.b.last_nodes) do
     for _, node in pairs(nodes) do
-      if compare_nodes(node, prev_node) then
+      if
+        compare_nodes(node, prev_node)
+        or node.id == vim.b.fence_preview_inside_node
+      then
         no_process[tostring(node.id)] = true
         goto matched
       end
     end
     -- Node which no longer exists
-    sixel_extmarks.remove(vim.b.extmark_map[tostring(prev_node.id)])
+    local extmark_id = vim.b.extmark_map[tostring(prev_node.id)]
+    if extmark_id ~= nil then
+      sixel_extmarks.remove(extmark_id)
+    end
     vim.b.extmark_map[tostring(prev_node.id)] = nil
 
     ::matched::
