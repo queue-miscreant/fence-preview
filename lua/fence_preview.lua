@@ -58,6 +58,20 @@ local function compare_nodes(node1, node2)
   )
 end
 
+local function remove_unused_extmarks()
+  -- Find all extmarks which are in the current extmark map
+  local extmark_ids = {}
+  for _, extmark_id in pairs(vim.b.extmark_map or {}) do
+    extmark_ids[tostring(extmark_id)] = true
+  end
+
+  for _, extmark in pairs(sixel_extmarks.get(0, -1)) do
+    if extmark_ids[tostring(extmark.id)] == nil then
+      sixel_extmarks.remove(extmark.id)
+    end
+  end
+end
+
 
 function fence_preview.reload()
   vim.b.draw_number = (vim.b.draw_number or 0) + 1
@@ -73,8 +87,11 @@ function fence_preview.reload()
   for _, prev_node in pairs(vim.b.last_nodes) do
     for _, node in pairs(nodes) do
       if
-        compare_nodes(node, prev_node)
-        or node.id == vim.b.fence_preview_inside_node
+        node.id == vim.b.fence_preview_inside_node
+        or (
+          vim.b.extmark_map[tostring(prev_node.id)] ~= nil
+          and compare_nodes(node, prev_node)
+        )
       then
         no_process[tostring(node.id)] = true
         goto matched
@@ -89,6 +106,8 @@ function fence_preview.reload()
 
     ::matched::
   end
+
+  remove_unused_extmarks()
 
   -- Cursor
   vim.b.fence_preview_inside_node = nil
