@@ -39,7 +39,7 @@ end
 local function node_under_cursor(nodes, cursor_line)
   for _, node in ipairs(nodes) do
     -- Cursor is inside this node
-    if (node.range[1] < cursor_line and cursor_line < node.range[2]) then
+    if (node.range[1] <= cursor_line and cursor_line < node.range[2]) then
       return node
     end
   end
@@ -50,11 +50,9 @@ end
 ---@param node1 node
 ---@param node2 node
 local function compare_nodes(node1, node2)
-  -- Nodes have the same content and the same range
+  -- Nodes have the same content
   return (
     node1.hash == node2.hash
-    and node1.range[1] == node2.range[1]
-    and node1.range[2] == node2.range[2]
   )
 end
 
@@ -65,9 +63,19 @@ local function remove_unused_extmarks()
     extmark_ids[tostring(extmark_id)] = true
   end
 
+  local current_images = {}
+  -- Remove image extmarks which are not in the above map
   for _, extmark in pairs(sixel_extmarks.get(0, -1)) do
+    current_images[tostring(extmark.id)] = true
     if extmark_ids[tostring(extmark.id)] == nil then
       sixel_extmarks.remove(extmark.id)
+    end
+  end
+
+  -- Nodes no longer reference extmarks that do not exist
+  for node_id, extmark_id in pairs(vim.b.extmark_map or {}) do
+    if not current_images[tostring(extmark_id)] then
+      vim.cmd(("unlet b:extmark_map[%d]"):format(node_id))
     end
   end
 end
@@ -84,14 +92,12 @@ function fence_preview.reload()
 
   local no_process = {}
 
+  -- Compare the new nodes with the previous nodes
   for _, prev_node in pairs(vim.b.last_nodes) do
     for _, node in pairs(nodes) do
       if
-        node.id == vim.b.fence_preview_inside_node
-        or (
-          vim.b.extmark_map[tostring(prev_node.id)] ~= nil
-          and compare_nodes(node, prev_node)
-        )
+        vim.b.extmark_map[tostring(prev_node.id)] ~= nil
+        and compare_nodes(node, prev_node)
       then
         no_process[tostring(node.id)] = true
         goto matched
@@ -107,24 +113,21 @@ function fence_preview.reload()
     ::matched::
   end
 
-  remove_unused_extmarks()
-
-  -- Cursor
+  -- Add the node under the cursor to the no process list
   vim.b.fence_preview_inside_node = nil
   local cursor_node = node_under_cursor(nodes, vim.fn.line("."))
   if cursor_node ~= nil then
     vim.b.fence_preview_inside_node = cursor_node.id
+    no_process[tostring(cursor_node.id)] = true
   end
 
+  remove_unused_extmarks()
   vim.wo.foldmethod = "manual"
 
   pipeline.pipe_nodes(
     vim.tbl_filter(
       function(node)
-        return (
-          node.id ~= vim.b.fence_preview_inside_node
-          and no_process[tostring(node.id)] == nil
-        )
+        return no_process[tostring(node.id)] == nil
       end,
       nodes
     ),
@@ -181,22 +184,29 @@ function fence_preview.bind()
       group = "FencePreview",
       buffer = 0,
       callback = function()
-        if vim.b.fence_preview_inside_node == nil then
-          -- Attempt to re-fold the node if we're in normal mode
-          if vim.fn.mode():sub(1, 1) ~= "n" then return end
+        -- Do nothing if we did not hold off on processing a node due to cursor position
+        if vim.b.fence_preview_inside_node == nil then return end
 
-          local node = node_under_cursor(vim.b.last_nodes, vim.w.fence_preview_last_line or -1)
-          local new_cursor = vim.fn.line(".")
-          vim.w.fence_preview_last_line = new_cursor
-
-          if node ~= nil and not cursor_in_node(node, new_cursor) then
-            node_action.refold(node)
-          end
+        -- We were in a node, so if the node under the cursor is the same one
+        local current_node = node_under_cursor(vim.b.last_nodes, vim.fn.line("."))
+        if
+          current_node ~= nil
+          and current_node.id == vim.b.fence_preview_inside_node
+        then
+          -- -- Attempt to re-fold the node if we're in normal mode
+          -- if vim.fn.mode():sub(1, 1) ~= "n" then return end
+          --
+          -- local node = node_under_cursor(vim.b.last_nodes, vim.w.fence_preview_last_line or -1)
+          -- local new_cursor = vim.fn.line(".")
+          -- vim.w.fence_preview_last_line = new_cursor
+          --
+          -- if node ~= nil and not cursor_in_node(node, new_cursor) then
+          --   node_action.refold(node)
+          -- end
           return
         end
 
         vim.wo.foldmethod = "manual"
-
         pipeline.pipe_nodes(
           vim.tbl_filter(
             function(node) return node.id == vim.b.fence_preview_inside_node end,
@@ -232,8 +242,8 @@ function fence_preview.bind()
     {}
   )
 
-  vim.b.last_nodes = {}
-  vim.b.extmark_map = {}
+  vim.b.last_nodes = vim.empty_dict()
+  vim.b.extmark_map = vim.empty_dict()
   vim.b.fence_preview_bound_autocmds = true
 
   fence_preview.reload()

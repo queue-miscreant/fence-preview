@@ -26,18 +26,12 @@ end
 --
 ---@param node node
 function node_action.refold(node)
-  if node.params == nil or node.params == vim.NIL or node.params.height == nil then return end
-
   -- delete all folds in the range
   local saved = vim.fn.winsaveview()
   pcall(function() vim.cmd(("normal %dGzD"):format(node.range[2] - 1)) end)
   vim.fn.winrestview(saved)
 
-  local height = math.max(node.params.height, fence_preview.minimum_height)
-  if height < node.range[2] - node.range[1] + 1 then
-    -- add fold to the proper height
-    vim.cmd(("%d,%dfold"):format(node.range[1] + height - 2, node.range[2] - 1))
-  end
+  vim.cmd(("%d,%dfold"):format(node.range[1], node.range[2] - 1))
 end
 
 
@@ -55,6 +49,10 @@ function node_action.try_draw_extmark(args)
       if vim.b.draw_number ~= args.draw_number then return end
 
       node_action.refold(node)
+      local height = node.range[2] - node.range[1]
+      if args.node.params.height ~= nil then
+        height = node.params.height
+      end
 
       -- Compare the node received against nodes in the current buffer
       for _, last_node in ipairs(vim.b.last_nodes) do
@@ -64,15 +62,23 @@ function node_action.try_draw_extmark(args)
           node.id == last_node.id
           and last_node_extmark ~= nil
         then
+          -- TODO
+          sixel_extmarks.move(last_node_extmark, node.range[2] - 1, height)
           if last_node.hash ~= node.hash then
             sixel_extmarks.change_content(last_node_extmark, image_path.path)
-            sixel_extmarks.move(last_node_extmark, node.range[1] - 1, node.range[2] - 1)
-            return
           end
+          return
         end
       end
 
-      vim.b.extmark_map[tostring(node.id)] = sixel_extmarks.create(node.range[1] - 1, node.range[2] - 1, image_path.path)
+      vim.cmd(("let b:extmark_map[%d] = %d"):format(
+        node.id,
+        sixel_extmarks.create_virtual(
+          node.range[2] - 1,
+          height,
+          image_path.path
+        )
+      ))
     end)
   end, 0)
 end
@@ -107,7 +113,14 @@ function node_action.try_error_extmark(args)
         end
       end
 
-      vim.b.extmark_map[tostring(node.id)] = sixel_extmarks.create_error(node.range[1] - 1, node.range[2] - 1, tostring(message))
+      vim.cmd(("let b:extmark_map[%d] = %d"):format(
+        node.id,
+        sixel_extmarks.create_error(
+          node.range[1] - 1,
+          node.range[2] - 1,
+          tostring(message)
+        )
+      ))
     end)
   end, 0)
 end
@@ -149,7 +162,7 @@ pipeline.define(".plt", {
 })
 
 pipeline.define("#python", {
-    latex.run_python
+  latex.run_python
 })
 
 return node_action
