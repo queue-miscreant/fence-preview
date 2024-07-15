@@ -3,6 +3,7 @@
 -- Functions for opening up a split for editing fence content, while previewing
 -- the result in the main buffer.
 
+local buffer_tree = require "fence_preview.buffer_tree"
 local delimit = require "fence_preview.delimit"
 local pipeline = require "fence_preview.pipeline"
 
@@ -12,7 +13,6 @@ local side_window = {}
 ---@param node fence_node
 function side_window.enter_window(node)
   local current_buffer = vim.api.nvim_get_current_buf()
-  local current_window = vim.api.nvim_get_current_win()
 
   local current_cursor = vim.api.nvim_win_get_cursor(0)
   -- Move cursor outside the range
@@ -21,13 +21,7 @@ function side_window.enter_window(node)
 
   local new_buffer = vim.api.nvim_create_buf(0, 0)
   -- TODO: preamble for TeX (and potentially other content)
-  vim.api.nvim_buf_set_lines(
-    new_buffer,
-    0,
-    -1,
-    0,
-    node.content
-  )
+  vim.api.nvim_buf_set_lines(new_buffer, 0, -1, 0, node.content)
   vim.api.nvim_set_option_value("filetype", node.params.filetype, { buf = new_buffer })
   vim.api.nvim_set_option_value("buftype", nil, { buf = new_buffer })
   -- Set a temporary filename for linting plugins that depend on that
@@ -41,13 +35,14 @@ function side_window.enter_window(node)
       split = "right"
     }
   )
-  vim.api.nvim_win_set_cursor(new_window, {math.max(0, current_cursor[1] - node.range[1] + 1), 0})
+  vim.api.nvim_win_set_cursor(new_window, {math.max(1, current_cursor[1] - node.range[1]), 0})
 
   vim.api.nvim_create_autocmd({"BufWrite"}, {
     buffer = new_buffer,
     callback = function()
       local num_lines = vim.fn.line("$")
 
+      -- TODO: move some of this to buffer_tree
       vim.api.nvim_buf_call(current_buffer, function ()
         delimit.set_node_content(node, vim.api.nvim_buf_get_lines(new_buffer, 0, -1, 0))
         vim.api.nvim_buf_set_lines(
@@ -58,10 +53,10 @@ function side_window.enter_window(node)
           node.content
         )
 
-        vim.b.draw_number = (vim.b.draw_number or 0) + 1
+        vim.b.fence_preview_draw_number = (vim.b.fence_preview_draw_number or 0) + 1
         pipeline.pipe_nodes(
           { node },
-          vim.b.draw_number
+          vim.b.fence_preview_draw_number
         )
 
         -- Write parent buffer
@@ -79,15 +74,17 @@ function side_window.enter_window(node)
         node.range[2] = node.range[2] + offset
 
         -- Retrieve tree from buffer
-        local last_nodes = vim.b.last_nodes
+        ---@type buffer_data
+        local buffer_data = buffer_tree.buffers_to_data[tostring(current_buffer)]
+        if buffer_data == nil then return end
+
+        local last_nodes = buffer_data.nodes
         for _, other_node in pairs(last_nodes) do
           if other_node.range[1] > node.range[2] then
             other_node.range[1] = other_node.range[1] + offset
             other_node.range[2] = other_node.range[2] + offset
           end
         end
-        -- Write variable back to buffer
-        vim.b.last_nodes = last_nodes
       end)
     end
   })
