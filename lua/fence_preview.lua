@@ -26,7 +26,16 @@ vim.api.nvim_create_augroup("FencePreview", { clear = false })
 
 function fence_preview.show_logs()
   local new_buffer = vim.api.nvim_create_buf(0, 1)
-  vim.api.nvim_buf_set_lines(new_buffer, 0, -1, 0, pipeline._logs)
+  local current_buffer = vim.api.nvim_get_current_buf()
+  local logs = {}
+  vim.tbl_map(
+    ---@param node node
+    function(node)
+      vim.list_extend(logs, node.logs)
+    end,
+    buffer_tree.buffers_to_data[tostring(current_buffer)].nodes
+  )
+  vim.api.nvim_buf_set_lines(new_buffer, 0, -1, 0, logs)
   vim.api.nvim_open_win(new_buffer, true, {
     win = 0,
     split = "right"

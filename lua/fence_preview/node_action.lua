@@ -29,10 +29,14 @@ end
 function node_action.refold(node)
   -- delete all folds in the range
   local saved = vim.fn.winsaveview()
-  pcall(function() vim.cmd(("normal %dGzD"):format(node.range[2] - 1)) end)
+  pcall(function()
+    vim.cmd(("normal %dGzD"):format(node.range[2] - 1))
+  end)
   vim.fn.winrestview(saved)
 
-  vim.cmd(("%d,%dfold"):format(node.range[1], node.range[2] - 1))
+  pcall(function()
+    vim.cmd(("%d,%dfold"):format(node.range[1], node.range[2] - 1))
+  end)
 end
 
 
@@ -43,6 +47,7 @@ function node_action.try_draw_extmark(args)
   local image_path = args.previous --[[@as path]]
   local node = args.node
 
+  -- TODO: non-absolute paths are calculated from file's parent
   if image_path.exists == nil or not image_path:exists() then return end
 
   vim.defer_fn(function()
@@ -53,7 +58,7 @@ function node_action.try_draw_extmark(args)
 
       node_action.refold(node)
       local height = node.range[2] - node.range[1]
-      if args.node.params.height ~= nil then
+      if node and node.params ~= nil and node.params.height ~= nil then
         height = node.params.height
       end
 
@@ -89,12 +94,12 @@ function node_action.try_error_extmark(args)
   local message = args.previous
   local node = args.node
 
-  pipeline.log(message)
-  pipeline.log(args)
+  args.node:log(message)
+  args.node:log(args)
 
   vim.defer_fn(function()
     vim.api.nvim_buf_call(node.buffer, function()
-      pipeline.log(vim.b.fence_preview_draw_number, args.draw_number)
+      args.node:log(vim.b.fence_preview_draw_number, args.draw_number)
       if vim.b.fence_preview_draw_number ~= args.draw_number then return end
       local buffer_data = buffer_tree.buffers_to_data[tostring(node.buffer)]
       if buffer_data == nil then return end
@@ -158,8 +163,10 @@ pipeline.define(".plt", {
   "#gnuplot"
 })
 
-pipeline.define("#python", {
-  latex.run_python
-})
+pipeline.define(
+  "#python",
+  {latex.run_python},
+  true
+)
 
 return node_action

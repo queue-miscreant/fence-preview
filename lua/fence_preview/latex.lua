@@ -1,7 +1,7 @@
-local pipeline = require "fence_preview.pipeline"
-local path = require "fence_preview.path"
+local subprocess = require "fence_preview.polyfill.subprocess"
+local path = require "fence_preview.polyfill.path"
 
-MATH_START = [[
+local MATH_START = [[
 \documentclass[20pt, preview]{standalone}
 \nonstopmode
 \usepackage{amsmath,amsfonts,amsthm}
@@ -10,7 +10,7 @@ MATH_START = [[
 \[
 ]]
 
-MATH_END = [[
+local MATH_END = [[
 \]
 \end{document}
 ]]
@@ -110,16 +110,16 @@ function latex.generate_dvi_from_latex(args, callback, error_callback)
   -- Skip if the dvi already exists
   if dvi_path:exists() then return dvi_path end
 
-  pipeline.subprocess("latex",
+  subprocess.spawn("latex",
     {
       args = { tex_path.path },
       stdio = { false, true, true },
       cwd = path.tempdir,
     },
     function(ret)
-      pipeline.log(ret.stdout)
-      pipeline.log(ret.stderr)
-      pipeline.log(args)
+      args.node:log(ret.stdout)
+      args.node:log(ret.stderr)
+      args.node:log(args)
       if
         false
         -- and ret.code ~= 0
@@ -165,7 +165,7 @@ function latex.generate_svg_from_dvi(args, callback, error_callback)
   -- Skip if the SVG already exists
   if svg_path:exists() then return svg_path end
 
-  pipeline.subprocess("dvisvgm",
+  subprocess.spawn("dvisvgm",
     {
       args ={ "-b", "1", "--no-fonts", "--zoom=10.0", dvi_path.path },
       stdio = { false, true, true },
@@ -173,9 +173,9 @@ function latex.generate_svg_from_dvi(args, callback, error_callback)
     },
     function(ret)
       -- TODO: dvisvgm error handling
-      pipeline.log(ret.stdout)
-      pipeline.log(ret.stderr)
-      pipeline.log(args)
+      args.node:log(ret.stdout)
+      args.node:log(ret.stderr)
+      args.node:log(args)
 
       if ret.code ~= 0 or ret.stderr:find("error:", 1, true) ~= nil then
         -- buf = table.concat(ret.stdout, "")
@@ -208,7 +208,7 @@ function latex.rasterize(args, callback, error_callback)
   -- Skip if the PNG already exists
   if png_path:exists() then return png_path end
 
-  pipeline.subprocess("magick",
+  subprocess.spawn("magick",
     {
       args ={ "-density", "600", svg_path.path, png_path.path },
       stdio = { false, true, true },
@@ -236,7 +236,7 @@ end
 function latex.run_python(args, callback, error_callback)
   local code = args.previous --[[@as string[] ]]
 
-  local _, stdin = pipeline.subprocess("python",
+  local _, stdin = subprocess.spawn("python",
     {
       args ={ "-" },
       stdio = { true, true, true },
@@ -244,10 +244,11 @@ function latex.run_python(args, callback, error_callback)
     },
     function(ret)
       if ret.code ~= 0 then
-        pipeline.log(ret.stdout)
-        pipeline.log(ret.stderr)
-        pipeline.log(args)
-        error_callback("Python error:\n" .. vim.split(ret.stderr, "\n"))
+        args.node:log(ret.stdout)
+        args.node:log(ret.stderr)
+        args.node:log(args)
+        error_callback("Python error occurred")
+        -- error_callback("Python error occurred:\n" .. ret.stderr)
         return
       end
 
@@ -293,7 +294,7 @@ function latex.gnuplot_to_png(args, callback, error_callback)
 
   local preamble = ("set output '%s'\nset terminal png\n"):format(png_path)
 
-  local _, stdin = pipeline.subprocess("gnuplot",
+  local _, stdin = subprocess.spawn("gnuplot",
     {
       args ={ "-" },
       stdio = { true, false, true },
@@ -302,9 +303,9 @@ function latex.gnuplot_to_png(args, callback, error_callback)
     function(ret)
       if ret.code ~= 0 then
         -- TODO: gnuplot error handling
-        pipeline.log(ret.stdout)
-        pipeline.log(ret.stderr)
-        pipeline.log(args)
+        args.node:log(ret.stdout)
+        args.node:log(ret.stderr)
+        args.node:log(args)
         error_callback("gnuplot error:\n" .. vim.split(ret.stderr, "\n"))
         return
       end

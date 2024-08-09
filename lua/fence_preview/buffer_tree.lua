@@ -30,8 +30,7 @@ end
 ---@param cursor_line integer
 ---@param nodes? node[]
 ---@return node|nil
-function buffer_tree.node_at_line(cursor_line, nodes_arg)
-  local nodes = nodes_arg
+function buffer_tree.node_at_line(cursor_line, nodes)
   if nodes == nil then
     local current_buffer = vim.api.nvim_get_current_buf()
     nodes = (buffer_tree.buffers_to_data[tostring(current_buffer)] or {}).nodes

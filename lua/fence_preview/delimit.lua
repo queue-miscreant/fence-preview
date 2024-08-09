@@ -5,6 +5,8 @@
 
 local delimit = {}
 
+local node_metatable = {}
+
 ---@class parsing_node
 ---@field type "fence"|"file"
 ---@field parameters string[]
@@ -29,6 +31,10 @@ local delimit = {}
 ---@field hash string
 ---@field buffer integer
 ---@field extmark_id? integer
+---@field logs string[]
+---
+---@field log? fun(self: fence_node, ...: any)
+---@field clear_logs? fun()
 
 ---@class file_node
 ---@field type "file"
@@ -38,6 +44,10 @@ local delimit = {}
 ---@field hash string
 ---@field buffer integer
 ---@field extmark_id? integer
+---@field logs string[]
+---
+---@field log? fun(self: file_node, ...: any)
+---@field clear_logs? fun()
 
 ---@alias node fence_node|file_node
 
@@ -88,16 +98,20 @@ end
 ---@param node parsing_node
 ---@return node|nil
 local function cook_node(node, buffer_number)
+  ---@type node
+  local ret
+
   if node.type == "file" then
     local filename = node.parameters[1]
     ---@type file_node
-    return {
+    ret = {
       type = "file",
       filename = filename,
       range = {node.start + 1, node.end_},
       id = node.id,
       hash = vim.fn.sha256(filename),
-      buffer = buffer_number
+      buffer = buffer_number,
+      logs = {},
     }
   else
     local parsed = parse_node_parameters(node.parameters)
@@ -105,16 +119,21 @@ local function cook_node(node, buffer_number)
     if #node.content == 0 then return nil end
 
     ---@type fence_node
-    return {
+    ret = {
       type = "fence",
       params = parsed,
       content = node.content,
       range = {node.start, node.end_},
       id = node.id,
       hash = vim.fn.sha256(vim.trim(table.concat(node.content, "\n"))),
-      buffer = buffer_number
+      buffer = buffer_number,
+      logs = {},
     }
   end
+
+  setmetatable(ret, node_metatable)
+  node_metatable.__index = node_metatable
+  return ret
 end
 
 
@@ -125,7 +144,28 @@ function delimit.set_node_content(node, content)
   node.hash = vim.fn.sha256(vim.trim(table.concat(content, "\n")))
 end
 
+---@param self node
+---@param ... any
+function node_metatable:log(...)
+  local args = { ... }
+  for _, entry in ipairs(args) do
+    if type(entry) ~= "string" then
+      entry = vim.inspect(entry)
+    end
+    vim.list_extend(self.logs, vim.split(entry, "\n"))
+  end
+end
 
+---@param self node
+function node_metatable:clear_logs()
+  self.logs = {}
+end
+
+
+-- Build up a list of nodes from the data in `lines`.
+-- Nodes are either markdown links on their own line beginning with a !,
+-- or a region of text enclosed in triple-backticks with a filetype.
+--
 ---@param lines string[]
 ---@param buffer_number integer
 ---@return node[]
