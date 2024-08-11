@@ -1,26 +1,6 @@
 local buffer_tree = require "fence_preview.buffer_tree"
-local latex = require "fence_preview.latex"
-local pipeline = require "fence_preview.pipeline"
 
 local node_action = {}
-
--- Read a file and pass its contents as a list of strings
---
----@type pipeline_stage
-local function read_file(args, callback, error_callback)
-  local file_path = args.previous --[[@as path]]
-
-  local file = io.open(file_path.path)
-  if file == nil then
-    error_callback(("Could not read file `%s`"):format(file_path))
-    return
-  end
-
-  local content = file:read("a")
-  file:close()
-
-  return vim.split(content, "\n")
-end
 
 
 -- Apply folds to a node if it has a preferred height.
@@ -126,47 +106,5 @@ function node_action.try_error_extmark(args)
     end)
   end, 0)
 end
-
-pipeline.define("display", {
-  node_action.try_draw_extmark
-})
-
-pipeline.define("error", {
-  node_action.try_error_extmark
-})
-
-pipeline.define(".tex", {
-  latex.write_tex,
-  latex.generate_dvi_from_latex,
-  latex.generate_svg_from_dvi,
-  -- latex.rasterize,
-  "display"
-})
-
-pipeline.define("#latex", {
-  latex.write_tex,
-  ".tex"
-})
-
-pipeline.define("#math", {
-  latex.add_math_preamble,
-  "#latex"
-})
-
-pipeline.define("#gnuplot", {
-  latex.gnuplot_to_png,
-  "display"
-})
-
-pipeline.define(".plt", {
-  read_file,
-  "#gnuplot"
-})
-
-pipeline.define(
-  "#python",
-  {latex.run_python},
-  true
-)
 
 return node_action

@@ -13,6 +13,8 @@ local basename
 ---@type fun(path: string): string
 local dirname
 if vim.fs == nil then
+  -- TODO: This doesn't actually work!
+  -- These functions need to be available in a loop callback
   function normalize(file_path)
     return vim.fn.fnamemodify(file_path, ":p")
   end

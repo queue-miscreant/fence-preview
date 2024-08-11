@@ -3,7 +3,7 @@
 -- Autocommands for building a list of processable content and asynchronously rendering
 -- said content into extmarks.
 
-require "fence_preview.node_action"
+require "fence_preview.stages"
 local buffer_tree = require "fence_preview.buffer_tree"
 local side_window = require "fence_preview.side_window"
 local pipeline = require "fence_preview.pipeline"

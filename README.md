@@ -68,7 +68,9 @@ Plugin highlights
 TODOs
 -----
 
-- Some pipelines need to not be automatic (Python) 
+- Manual pipelines can be triggered
+- Make sure image extmarks show an error on failure
+- Virtual extmarks use fallback
 - Better splits
     - Preambles for fence content (TeX for math so that syntax works properly, Python imports(?))
 - Default LaTeX display is not eye-searing
