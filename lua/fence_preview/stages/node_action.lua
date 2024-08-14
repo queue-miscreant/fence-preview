@@ -32,7 +32,7 @@ function node_action.try_draw_extmark(args)
 
   vim.defer_fn(function()
     vim.api.nvim_buf_call(node.buffer, function()
-      if vim.b.fence_preview_draw_number ~= args.draw_number then return end
+      if vim.b.fence_preview_draw_number ~= args.node.draw_number then return end
       local buffer_data = buffer_tree.buffers_to_data[tostring(node.buffer)]
       if buffer_data == nil then return end
 
@@ -79,8 +79,8 @@ function node_action.try_error_extmark(args)
 
   vim.defer_fn(function()
     vim.api.nvim_buf_call(node.buffer, function()
-      args.node:log(vim.b.fence_preview_draw_number, args.draw_number)
-      if vim.b.fence_preview_draw_number ~= args.draw_number then return end
+      args.node:log(vim.b.fence_preview_draw_number, args.node.draw_number)
+      if vim.b.fence_preview_draw_number ~= args.node.draw_number then return end
       local buffer_data = buffer_tree.buffers_to_data[tostring(node.buffer)]
       if buffer_data == nil then return end
 

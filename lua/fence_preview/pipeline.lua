@@ -1,14 +1,15 @@
 local path = require "fence_preview.polyfill.path"
+local delimit = require "fence_preview.delimit"
 
 local pipeline = {
   ---@type {[string]: pipeline}
   runners = {},
 }
 
+
 ---@class pipeline_input
 ---@field previous any
 ---@field node node
----@field draw_number integer
 
 ---@alias pipeline_callback fun(ret: any, maybe_defer?: string|nil)
 ---@alias pipeline_stage fun(input: pipeline_input, callback?: pipeline_callback, error_callback?: fun(msg: string)): any, string?
@@ -51,6 +52,7 @@ function pipeline.define(name, funs, manual)
     manual = not not manual,
   }
 end
+
 
 -- Run a pipeline -- a series of functions which are chained together with callbacks.
 -- Should an error occur inside a function, the runner "error" (defined with `pipeline.define`)
@@ -102,58 +104,70 @@ function pipeline.run(input, stages)
 end
 
 
--- Attempt to run pipelines on a list of nodes.
--- Nodes which are simple files will attempt to run a pipeline based on the suffix of the path
+-- Attempt to run pipelines on a node.
+-- File nodes attempt to find and run a pipeline based on the suffix of the path
 -- (e.g., ".tex"). If no pipeline is found, it calls the "display" pipeline.
 --
--- Nodes which contain fenced content attempt to run a pipeline based on the filetype, preceded
+-- Fence nodes attempt to find and run a pipeline based on the filetype, preceded
 -- by a "#" (e.g., "#python"). If no pipeline exists, it will not be run.
 --
----@param nodes node[] A list of nodes, each of which gets run through a pipeline
----@param draw_number integer A node-independed number passed along the pipeline
+---@param node node A node to run through a pipeline
 ---@param manual? boolean
-function pipeline.pipe_nodes(nodes, draw_number, manual)
-  for _, node in pairs(nodes) do
-    ---@type string
-    local stage_name
-    ---@type string[] | string
-    local value = nil
+function pipeline.pipe_node(node, manual)
+  ---@type string
+  local stage_name
+  ---@type string[] | string
+  local value = nil
 
-    -- File nodes just run the pipeline `.{ext}`, or image display if none exists
-    if node.type == "file" then
-      ---@cast node file_node
-      value = path.new(node.filename)
-      if value.suffix == nil then return nil end
+  -- File nodes just run the pipeline `.{ext}`, or image display if none exists
+  if node.type == "file" then
+    ---@cast node file_node
+    value = path.new(node.filename)
+    if value.suffix == nil then return nil end
 
-      stage_name = value.suffix
-      -- Pipeline exists for suffix
-      if pipeline.runners[stage_name] == nil then
-        stage_name = "display"
-      end
-    -- Fenced content with a filetype runs the pipeline `#{ft}`
-    else
-      ---@cast node fence_node
-      stage_name = "#" .. node.params.filetype
-      value = node.content
+    stage_name = value.suffix
+    -- Pipeline exists for suffix
+    if pipeline.runners[stage_name] == nil then
+      stage_name = "display"
     end
+  -- Fenced content with a filetype runs the pipeline `#{ft}`
+  else
+    ---@cast node fence_node
+    stage_name = "#" .. node.params.filetype
+    value = node.content
+  end
 
-    -- TODO: Manual/automatic pipelines should be configured via setting variables
-    local runner = pipeline.runners[stage_name]
-    if
-      runner ~= nil
-      -- This pipeline must be manually triggered
-      and (manual or not runner.manual)
-    then
-      pipeline.run(
-        {
-          previous = value,
-          node = node,
-          draw_number = draw_number
-        },
-        runner.stages
-      )
-    end
+  -- TODO: Manual/automatic pipelines should be configured via setting variables
+  local runner = pipeline.runners[stage_name]
+  if
+    runner ~= nil
+    -- This pipeline must be manually triggered
+    and (manual or not runner.manual)
+  then
+    pipeline.run(
+      {
+        previous = value,
+        node = node,
+      },
+      runner.stages
+    )
   end
 end
+
+
+-- Attempt to run pipelines on a list of nodes.
+-- The same semantics to `pipeline.pipe_nodes` applies, but over a table of nodes.
+--
+---@param nodes node[] A node to run through a pipeline
+---@param manual? boolean
+function pipeline.pipe_nodes(nodes, manual)
+  for _, node in ipairs(nodes) do
+    pipeline.pipe_node(node, manual)
+  end
+end
+
+
+-- Also in method form
+delimit.node_metatable.pipe = pipeline.pipe_node
 
 return pipeline

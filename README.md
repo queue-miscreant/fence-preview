@@ -8,6 +8,9 @@ which refused to compile on my Linux box.
 A sister project to [nvim-image-extmarks](https://github.com/queue-miscreant/nvim-image-extmarks),
 which it depends upon.
 
+Neovim 0.10 note: drawing images at virt_lines extmarks requires text_height.
+Use prior virt_lines implementation by default for those versions.
+
 
 Requirements
 ------------

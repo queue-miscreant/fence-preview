@@ -7,6 +7,12 @@ local delimit = {}
 
 local node_metatable = {}
 
+-- Allow extensions outside of this file
+delimit.node_metatable = node_metatable
+
+-- TODO: `extmark_id` assumes all extmarks are in the same namespace,
+-- but some might want to live in one defined by this plugin
+
 ---@class parsing_node
 ---@field type "fence"|"file"
 ---@field parameters string[]
@@ -31,6 +37,7 @@ local node_metatable = {}
 ---@field hash string
 ---@field buffer integer
 ---@field extmark_id? integer
+---@field draw_number? integer
 ---@field logs string[]
 ---
 ---@field log? fun(self: fence_node, ...: any)
@@ -44,6 +51,7 @@ local node_metatable = {}
 ---@field hash string
 ---@field buffer integer
 ---@field extmark_id? integer
+---@field draw_number? integer
 ---@field logs string[]
 ---
 ---@field log? fun(self: file_node, ...: any)

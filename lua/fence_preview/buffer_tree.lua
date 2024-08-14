@@ -135,12 +135,13 @@ function buffer_tree.reload_buffer()
   buffer_data.nodes = nodes
   pipeline.pipe_nodes(
     vim.tbl_filter(
+      ---@param node node
       function(node)
+        node.draw_number = vim.b.fence_preview_draw_number
         return no_process[tostring(node.id)] == nil
       end,
       nodes
-    ),
-    vim.b.fence_preview_draw_number
+    )
   )
 end
 
@@ -164,10 +165,13 @@ function buffer_tree.try_update_inside_node()
   vim.wo.foldmethod = "manual"
   pipeline.pipe_nodes(
     vim.tbl_filter(
-      function(node) return node.id == vim.b.fence_preview_inside_node end,
+      ---@param node node
+      function(node)
+        node.draw_number = vim.b.fence_preview_draw_number
+        return node.id == vim.b.fence_preview_inside_node
+      end,
       buffer_data.nodes
-    ),
-    vim.b.fence_preview_draw_number
+    )
   )
 
   vim.b.fence_preview_inside_node = nil
