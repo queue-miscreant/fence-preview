@@ -29,11 +29,12 @@ function node_action.try_draw_extmark(args)
   local image_path = args.previous --[[@as path]]
   local node = args.node
 
-  -- TODO: non-absolute paths are calculated from file's parent
-  if image_path.exists == nil or not image_path:exists() then return end
-
   vim.defer_fn(function()
     vim.api.nvim_buf_call(node.buffer, function()
+      -- Try making this path relative to this buffer's filename
+      image_path = image_path:relative_to(vim.api.nvim_buf_get_name(0))
+      if image_path.exists == nil or not image_path:exists() then return end
+
       if vim.b.fence_preview_draw_number ~= args.node.draw_number then return end
       local buffer_data = buffer_tree.buffers_to_data[tostring(node.buffer)]
       if buffer_data == nil then return end
