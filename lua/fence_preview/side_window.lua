@@ -54,7 +54,7 @@ function side_window.enter_window(node)
         )
 
         vim.b.fence_preview_draw_number = (vim.b.fence_preview_draw_number or 0) + 1
-        pipeline.pipe_nodes({ node })
+        pipeline.pipe_nodes(node, true)
 
         -- Write parent buffer
         if (

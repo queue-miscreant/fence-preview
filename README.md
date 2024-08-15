@@ -71,7 +71,7 @@ Plugin highlights
 TODOs
 -----
 
-- Manual pipelines can be triggered
+- Virtual environments make ImageMagick fail
 - Make sure image extmarks show an error on failure
 - Virtual extmarks use fallback
 - Better splits

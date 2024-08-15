@@ -2,6 +2,8 @@ local buffer_tree = require "fence_preview.buffer_tree"
 
 local node_action = {}
 
+local DEFAULT_HEIGHT = 10
+
 
 -- Apply folds to a node if it has a preferred height.
 --
@@ -37,7 +39,8 @@ function node_action.try_draw_extmark(args)
       if buffer_data == nil then return end
 
       node_action.refold(node)
-      local height = node.range[2] - node.range[1]
+      -- local height = node.range[2] - node.range[1]
+      local height = DEFAULT_HEIGHT
       if node and node.params ~= nil and node.params.height ~= nil then
         height = node.params.height
       end
@@ -57,8 +60,9 @@ function node_action.try_draw_extmark(args)
         end
       end
 
+      local start_line = node.type == "file" and node.range[1] or node.range[2]
       buffer_data.node_id_to_extmark_id[tostring(node.id)] = sixel_extmarks.create_virtual(
-        node.range[2] - 1,
+        start_line - 1,
         height,
         image_path.path
       )

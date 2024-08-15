@@ -75,7 +75,7 @@ function fence_preview.bind()
 
   vim.api.nvim_buf_create_user_command(
     0,
-    "OpenFence",
+    "FenceOpen",
     function()
       if vim.fn.mode():sub(1, 1) ~= "n" then return end
 
@@ -90,8 +90,21 @@ function fence_preview.bind()
 
   vim.api.nvim_buf_create_user_command(
     0,
-    "FenceRefresh",
+    "FenceRefreshAll",
     function() buffer_tree.reload_buffer() end,
+    {}
+  )
+
+  vim.api.nvim_buf_create_user_command(
+    0,
+    "FenceRefresh",
+    function()
+      local node = buffer_tree.node_at_line(vim.fn.line("."))
+      if node == nil then return end
+      if node.type == "file" then return end
+
+      pipeline.pipe_node(node, true)
+    end,
     {}
   )
 

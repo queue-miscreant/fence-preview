@@ -1,4 +1,4 @@
-local subprocess ={
+local subprocess = {
   timeout_ms = 5000,
 }
 
