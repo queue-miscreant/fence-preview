@@ -14,9 +14,7 @@ end
 
 ---@diagnostic disable-next-line
 fence_preview = {
-  ---@type integer
   ---TODO
-  minimum_height = 3,
   pipeline = pipeline,
   buffer_tree = buffer_tree,
 }

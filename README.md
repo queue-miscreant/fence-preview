@@ -17,9 +17,7 @@ Requirements
 
 - ImageMagick
 - LaTeX (optional)
-- Python libraries:
-    - pynvim
-    - wand (Python ImageMagick wrapper)
+- gnuplot (optional)
 - Plugins
     - [nvim-image-extmarks](https://github.com/queue-miscreant/nvim-image-extmarks)
 
@@ -71,12 +69,12 @@ Plugin highlights
 TODOs
 -----
 
-- Virtual environments make ImageMagick fail
-- Make sure image extmarks show an error on failure
-- Virtual extmarks use fallback
-- Better splits
-    - Preambles for fence content (TeX for math so that syntax works properly, Python imports(?))
+- Text extmarks for non-image pipeline outputs
+- Error extmark workaround for non-image extmarks
 - Default LaTeX display is not eye-searing
     - Simple: white text on black
     - Difficult: configurable, white text on configurable
         - use `background` option by default
+- Documentation
+- Better splits
+    - Preambles for fence content (TeX for math so that syntax works properly, Python imports(?))
