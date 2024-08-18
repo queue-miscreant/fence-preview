@@ -25,7 +25,7 @@ function node_action.refold(node)
     fold_start = node.range[1]
   else
     local height = math.max(
-      node.params.height or 0,
+      node.params.height or (node.range[2] - node.range[1] + 1),
       settings.minimum_inline_fence_height
     )
     -- Nothing to fold
@@ -53,14 +53,14 @@ function node_action.try_draw_extmark(args)
 
   vim.defer_fn(function()
     vim.api.nvim_buf_call(node.buffer, function()
+      -- Buffer has updated since the last time the pipeline was invoked
+      -- This should fail silently
+      if vim.b.fence_preview_draw_number ~= args.node.draw_number then return end
+
       -- Try making this path relative to this buffer's filename
       image_path = image_path == nil and {} or image_path:relative_to(vim.api.nvim_buf_get_name(0))
       -- TODO: alert error
       if image_path.exists == nil or not image_path:exists() then return end
-
-      -- Buffer has updated since the last time the pipeline was invoked
-      -- This should fail silently
-      if vim.b.fence_preview_draw_number ~= args.node.draw_number then return end
 
       -- Ensure node exists in buffer
       local buffer_data = buffer_tree.buffers_to_data[tostring(node.buffer)]
@@ -71,12 +71,12 @@ function node_action.try_draw_extmark(args)
       -- Compare the node received against nodes in the current buffer
       for _, last_node in ipairs(buffer_data.nodes) do
         -- Try to reuse extmark
-        local last_node_extmark = buffer_data.node_id_to_extmark_id[tostring(last_node.id)]
+        local last_node_extmark = buffer_data.node_id_to_extmarks[tostring(last_node.id)]
         if
           node.id == last_node.id
           and last_node_extmark ~= nil
         then
-          sixel_extmarks.remove(last_node_extmark)
+          buffer_tree.remove_extmark(last_node_extmark)
           break
         end
       end
@@ -94,17 +94,25 @@ function node_action.try_draw_extmark(args)
           height = node.params.height
         end
 
-        buffer_data.node_id_to_extmark_id[tostring(node.id)] = sixel_extmarks.create_virtual(
+        local new_extmark_id = sixel_extmarks.create_virtual(
           start_line - 1,
           height,
           image_path.path
         )
+        buffer_data.node_id_to_extmarks[tostring(node.id)] = {
+          id = new_extmark_id,
+          type = "sixel",
+        }
       else
-        buffer_data.node_id_to_extmark_id[tostring(node.id)] = sixel_extmarks.create(
+        local new_extmark_id = sixel_extmarks.create(
           node.range[1] - 1,
           node.range[2] - 1,
           image_path.path
         )
+        buffer_data.node_id_to_extmarks[tostring(node.id)] = {
+          id = new_extmark_id,
+          type = "sixel",
+        }
       end
     end)
   end, 0)
@@ -119,11 +127,9 @@ function node_action.try_error_extmark(args)
   local node = args.node
 
   args.node:log(message)
-  args.node:log(args)
 
   vim.defer_fn(function()
     vim.api.nvim_buf_call(node.buffer, function()
-      args.node:log(vim.b.fence_preview_draw_number, args.node.draw_number)
       if vim.b.fence_preview_draw_number ~= args.node.draw_number then return end
       local buffer_data = buffer_tree.buffers_to_data[tostring(node.buffer)]
       if buffer_data == nil then return end
@@ -131,22 +137,30 @@ function node_action.try_error_extmark(args)
       -- Compare the node received against nodes in the current buffer
       for _, last_node in ipairs(buffer_data.nodes) do
         -- Try to reuse extmark
-        local last_node_extmark = buffer_data.node_id_to_extmark_id[tostring(last_node.id)]
+        local last_node_extmark = buffer_data.node_id_to_extmarks[tostring(last_node.id)]
         if
           node.id == last_node.id
           and last_node_extmark ~= nil
         then
-          sixel_extmarks.set_extmark_error(last_node_extmark, tostring(message))
-          sixel_extmarks.move(last_node_extmark, node.range[1] - 1, node.range[2] - 1)
-          return
+          buffer_tree.remove_extmark(last_node_extmark)
+          break
         end
       end
 
-      buffer_data.node_id_to_extmark_id[tostring(node.id)] = sixel_extmarks.create_error(
+      local new_extmark_id = vim.api.nvim_buf_set_extmark(
+        0,
+        buffer_tree.TEXT_NAMESPACE,
         node.range[1] - 1,
-        node.range[2] - 1,
-        tostring(message)
+        0,
+        {
+          virt_text = {{tostring(message), "ErrorMsg"}},
+          virt_text_pos = "eol",
+        }
       )
+      buffer_data.node_id_to_extmarks[tostring(node.id)] = {
+        id = new_extmark_id,
+        type = "text",
+      }
     end)
   end, 0)
 end

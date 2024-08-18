@@ -68,7 +68,7 @@ function pipeline.run(input, stages)
       print(e, input)
     else
       input.previous = e
-      error_callback[1](input)
+      error_callback.stages[1](input)
     end
   end
 

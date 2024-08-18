@@ -22,8 +22,6 @@ if g:image_extmarks_allow_virtual == 0
   let g:fence_preview_use_virtual = 0
 end
 
-let g:fence_preview_use_virtual = 0
-
 lua require "fence_preview"
 
 " let g:image_extmarks_slow_insert = 1

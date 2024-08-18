@@ -6,15 +6,20 @@
 local delimit = require "fence_preview.delimit"
 local pipeline = require "fence_preview.pipeline"
 
+---@class pipeline_extmark
+---@field id integer
+---@field type "sixel" | "text"
 
 ---@class buffer_data
 ---@field nodes node[]
----@field node_id_to_extmark_id {[string]: integer}
+---@field node_id_to_extmarks {[string]: pipeline_extmark}
 
 
 local buffer_tree = {
   ---@type {[string]: buffer_data}
   buffers_to_data = {},
+  ---@type integer
+  TEXT_NAMESPACE = vim.api.nvim_create_namespace("fence-preview-text"),
 }
 
 
@@ -55,27 +60,55 @@ local function compare_nodes(node1, node2)
   )
 end
 
+---@param extmark pipeline_extmark
+function buffer_tree.remove_extmark(extmark)
+  if extmark.type == "sixel" then
+    sixel_extmarks.remove(extmark.id)
+  elseif extmark.type == "text" then
+    vim.api.nvim_buf_del_extmark(0, buffer_tree.TEXT_NAMESPACE, extmark.id)
+  end
+end
+
 ---@param buffer_data buffer_data
 local function remove_unused_extmarks(buffer_data)
   -- Find all extmarks which are in the current extmark map
-  local extmark_ids = {}
-  for _, extmark_id in pairs(buffer_data.node_id_to_extmark_id) do
-    extmark_ids[tostring(extmark_id)] = true
+  local sixel_extmark_ids = {}
+  local text_extmark_ids = {}
+  for _, extmark in pairs(buffer_data.node_id_to_extmarks) do
+    if extmark.type == "sixel" then
+      sixel_extmark_ids[tostring(extmark.id)] = true
+    else
+      text_extmark_ids[tostring(extmark.id)] = true
+    end
   end
 
   local current_images = {}
   -- Remove image extmarks which are not in the above map
   for _, extmark in pairs(sixel_extmarks.get(0, -1)) do
     current_images[tostring(extmark.id)] = true
-    if extmark_ids[tostring(extmark.id)] == nil then
-      sixel_extmarks.remove(extmark.id)
+    if sixel_extmark_ids[tostring(extmark.id)] == nil then
+      sixel_extmarks.remove_extmark(extmark.id)
+    end
+  end
+  -- Remove text extmarks which are not in the map
+  local current_text = {}
+  local text_extmarks = vim.api.nvim_buf_get_extmarks(0, buffer_tree.TEXT_NAMESPACE, 0, -1, {})
+  for _, extmark in pairs(text_extmarks) do
+    -- id, row, column
+    ---@cast extmark [integer, integer, integer]
+    current_text[tostring(extmark[1])] = true
+    if text_extmark_ids[tostring(extmark[1])] == nil then
+      vim.api.nvim_buf_del_extmark(0, buffer_tree.TEXT_NAMESPACE, extmark[1])
     end
   end
 
   -- Nodes no longer reference extmarks that do not exist
-  for node_id, extmark_id in pairs(buffer_data.node_id_to_extmark_id) do
-    if not current_images[tostring(extmark_id)] then
-      buffer_data.node_id_to_extmark_id[tostring(node_id)] = nil
+  for node_id, extmark in pairs(buffer_data.node_id_to_extmarks) do
+    if
+      (extmark.type == "sixel" and not current_images[tostring(extmark.id)])
+      or (extmark.type == "text" and not current_text[tostring(extmark.id)])
+    then
+      buffer_data.node_id_to_extmarks[tostring(node_id)] = nil
     end
   end
 end
@@ -103,20 +136,20 @@ function buffer_tree.reload_buffer()
   -- TODO this just needs to move stuff over, but we also need to `remove_unused`
   -- Consider refactoring
   for _, prev_node in pairs(last_nodes) do
-    local extmark_id = buffer_data.node_id_to_extmark_id[tostring(prev_node.id)]
+    local extmark = buffer_data.node_id_to_extmarks[tostring(prev_node.id)]
     for _, node in pairs(nodes) do
       if
-        extmark_id ~= nil and compare_nodes(node, prev_node)
+        extmark ~= nil and compare_nodes(node, prev_node)
       then
         no_process[tostring(node.id)] = true
         goto matched
       end
     end
     -- Node which no longer exists
-    if extmark_id ~= nil then
-      sixel_extmarks.remove(extmark_id)
+    if extmark ~= nil then
+      buffer_tree.remove_extmark(extmark)
     end
-    buffer_data.node_id_to_extmark_id[tostring(prev_node.id)] = nil
+    buffer_data.node_id_to_extmarks[tostring(prev_node.id)] = nil
 
     ::matched::
   end
@@ -182,7 +215,7 @@ end
 function buffer_tree.prepare_new_buffer(current_buffer)
   buffer_tree.buffers_to_data[tostring(current_buffer)] = {
     nodes = {},
-    node_id_to_extmark_id = {},
+    node_id_to_extmarks = {},
   }
 end
 

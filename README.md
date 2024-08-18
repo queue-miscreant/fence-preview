@@ -70,11 +70,12 @@ TODOs
 -----
 
 - Text extmarks for non-image pipeline outputs
-- Error extmark workaround for non-image extmarks
 - Default LaTeX display is not eye-searing
     - Simple: white text on black
     - Difficult: configurable, white text on configurable
         - use `background` option by default
 - Documentation
+- Only run pipeline when content changes
+- Add ability to halt running pipelines
 - Better splits
     - Preambles for fence content (TeX for math so that syntax works properly, Python imports(?))
