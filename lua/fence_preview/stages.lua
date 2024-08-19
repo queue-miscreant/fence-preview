@@ -12,6 +12,11 @@ pipeline.define("display", {
   stages.node_action.try_draw_extmark
 })
 
+-- Special text handler
+pipeline.define("text", {
+  stages.node_action.try_text_extmark
+})
+
 -- Special error handler
 pipeline.define("error", {
   stages.node_action.try_error_extmark

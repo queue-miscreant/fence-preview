@@ -24,4 +24,7 @@ end
 
 lua require "fence_preview"
 
+hi default link FencePreviewText Comment
+hi default link FencePreviewError ErrorMsg
+
 " let g:image_extmarks_slow_insert = 1

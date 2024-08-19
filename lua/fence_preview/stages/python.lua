@@ -17,12 +17,12 @@ function python.run_python(args, callback, error_callback)
       cwd = path.tempdir,
     },
     function(ret)
+      args.node:log(ret.stdout)
+
       if ret.code ~= 0 then
-        args.node:log(ret.stdout)
         args.node:log(ret.stderr)
         args.node:log(args)
         error_callback("Python error occurred")
-        -- error_callback("Python error occurred:\n" .. ret.stderr)
         return
       end
 
@@ -32,15 +32,18 @@ function python.run_python(args, callback, error_callback)
         -- Chain into math pipeline
         params["math"] = nil
         next_stage = "#math"
+        args.node:log("Interpreting the above as a math block")
       elseif vim.list_contains(params.others, "latex") then
         -- Chain into LaTeX pipeline
         params["latex"] = nil
         next_stage = "#latex"
+        args.node:log("Interpreting the above as a LaTeX block")
       elseif vim.list_contains(params.others, "image") then
         -- Display image
         next_stage = "display"
       else
-        -- TODO: potentially chain into text
+        -- Show text
+        next_stage = "text"
       end
 
       callback(vim.split(ret.stdout, "\n"), next_stage)

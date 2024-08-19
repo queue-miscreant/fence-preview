@@ -10,9 +10,6 @@ local node_metatable = {}
 -- Allow extensions outside of this file
 delimit.node_metatable = node_metatable
 
--- TODO: `extmark_id` assumes all extmarks are in the same namespace,
--- but some might want to live in one defined by this plugin
-
 ---@class parsing_node
 ---@field type "fence"|"file"
 ---@field parameters string[]
@@ -36,12 +33,12 @@ delimit.node_metatable = node_metatable
 ---@field id integer
 ---@field hash string
 ---@field buffer integer
----@field extmark_id? integer
 ---@field draw_number? integer
 ---@field logs string[]
 ---
 ---@field log? fun(self: fence_node, ...: any)
----@field clear_logs? fun()
+---@field log_self? fun(self: fence_node)
+---@field clear_logs? fun(self: fence_node)
 
 ---@class file_node
 ---@field type "file"
@@ -50,12 +47,12 @@ delimit.node_metatable = node_metatable
 ---@field id integer
 ---@field hash string
 ---@field buffer integer
----@field extmark_id? integer
 ---@field draw_number? integer
 ---@field logs string[]
 ---
 ---@field log? fun(self: file_node, ...: any)
----@field clear_logs? fun()
+---@field log_self? fun(self: file_node)
+---@field clear_logs? fun(self: file_node)
 
 ---@alias node fence_node|file_node
 
@@ -162,6 +159,19 @@ function node_metatable:log(...)
     end
     vim.list_extend(self.logs, vim.split(entry, "\n"))
   end
+end
+
+---@param self node
+function node_metatable:log_self()
+  self:log({
+    type = self.type,
+    content = self.content,
+    params = self.params,
+    range = self.range,
+    id = self.id,
+    hash = self.hash,
+    buffer = self.buffer,
+  })
 end
 
 ---@param self node

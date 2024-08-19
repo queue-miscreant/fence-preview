@@ -69,7 +69,6 @@ Plugin highlights
 TODOs
 -----
 
-- Text extmarks for non-image pipeline outputs
 - Default LaTeX display is not eye-searing
     - Simple: white text on black
     - Difficult: configurable, white text on configurable
