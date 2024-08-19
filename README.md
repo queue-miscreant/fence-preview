@@ -69,10 +69,6 @@ Plugin highlights
 TODOs
 -----
 
-- Default LaTeX display is not eye-searing
-    - Simple: white text on black
-    - Difficult: configurable, white text on configurable
-        - use `background` option by default
 - Documentation
 - Only run pipeline when content changes
 - Add ability to halt running pipelines

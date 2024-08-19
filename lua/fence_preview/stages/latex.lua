@@ -1,29 +1,39 @@
+local settings = require "fence_preview.settings"
 local subprocess = require "fence_preview.polyfill.subprocess"
 local path = require "fence_preview.polyfill.path"
 
--- TODO: configurable
-local MATH_START = [[
-\documentclass[20pt, preview]{standalone}
-\nonstopmode
-\usepackage{amsmath,amsfonts,amsthm}
-\usepackage{xcolor}
-\begin{document}
-\[
-]]
-
-local MATH_END = [[
-\]
-\end{document}
-]]
-
 local latex = {}
+
+local DARK_COLORS = [[
+\pagecolor{black}
+\color{white}
+]]
 
 -- Add a standard LaTeX preamble to lines which should always be interpreted in math mode.
 --
 ---@type pipeline_stage
 function latex.add_math_preamble(args)
-  local ret = { MATH_START, unpack(args.previous) } ---@diagnostic disable-line
-  table.insert(ret, MATH_END)
+  local extra_packages = table.concat(
+    vim.tbl_map(
+      function(package) return ("\\usepackage{%s}"):format(package) end,
+      settings.latex.extra_packages
+    ),
+    "\n"
+  )
+  local extra_preamble = extra_packages .. "\n" .. settings.latex.extra_preamble
+
+  -- Background color based on current `background` option
+  local background = settings.latex.force_mode == "" and vim.o.background or settings.latex.force_mode
+  local extra_document = ""
+  if background == "dark" then
+    extra_document = DARK_COLORS
+  end
+
+  local ret = {
+    settings.latex.math_start:format(extra_preamble, extra_document),
+    unpack(args.previous), ---@diagnostic disable-line
+  }
+  table.insert(ret, settings.latex.math_end)
   return ret
 end
 
@@ -120,22 +130,22 @@ function latex.generate_dvi_from_latex(args, callback, error_callback)
     function(ret)
       args.node:log(ret.stdout)
       args.node:log(ret.stderr)
-      args.node:log(args)
       if
-        false
-        -- and ret.code ~= 0
+        ret.code ~= 0
       then
-        -- TODO: LaTeX error handling
-
-        -- latex prints error to the stdout, if this is empty, then something is fundamentally
+        -- LaTeX prints error to the stdout, if this is empty, then something is fundamentally
         -- wrong with the latex binary (for example shared library error). In this case just
         -- exit the program
         if ret.stdout == "" then
-          error_callback(("LaTeX exited with `%s`"):format(ret.stderr))
+          error_callback("Detected fatal LaTeX error! Check your installation.")
           return
         end
 
-        error_callback(parse_latex_output(ret.stderr)[1])
+        -- TODO: LaTeX error hints
+        error_callback(
+          "LaTeX failed to compile!"
+          -- parse_latex_output(ret.stderr)[1]
+        )
         return
       end
 
@@ -168,20 +178,15 @@ function latex.generate_svg_from_dvi(args, callback, error_callback)
 
   subprocess.spawn("dvisvgm",
     {
-      args ={ "-b", "1", "--no-fonts", "--zoom=10.0", dvi_path.path },
+      args ={ "--no-fonts", "--zoom=10.0", dvi_path.path },
       stdio = { false, true, true },
       cwd = path.tempdir,
     },
     function(ret)
-      -- TODO: dvisvgm error handling
       args.node:log(ret.stdout)
-      args.node:log(ret.stderr)
-      args.node:log(args)
-
       if ret.code ~= 0 or ret.stderr:find("error:", 1, true) ~= nil then
-        -- buf = table.concat(ret.stdout, "")
-
-        error_callback("dvisvgm error: " .. ret.stderr)
+        args.node:log(ret.stderr)
+        error_callback("Could not render DVI to SVG!")
         return
       end
 
@@ -216,7 +221,9 @@ function latex.rasterize(args, callback, error_callback)
       cwd = path.tempdir,
     },
     function(ret)
+      args.node:log(ret.stdout)
       if ret.code ~= 0 then
+        args.node:log(ret.stderr)
         error_callback("An unknown error occurred in ImageMagick")
         return
       end
