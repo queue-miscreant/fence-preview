@@ -1,0 +1,191 @@
+*fence-preview.txt*				        Smarter markdown fences
+
+================================================================================
+INTRODUCTION                                            *fence-preview-introduction*
+
+A markdown preview extension for displaying images and rich content.
+
+Markdown content is great for creating rich content which can be used to
+generate HTML for the web. It has found use in note-taking software such as
+[Obsidian](https://obsidian.md/) and the Vim community's own
+[vimwiki](https://github.com/vimwiki/vimwiki).
+
+Since native vimwiki is already a quite nice environment, this
+plugin adds an independent layer of functionality to markdown files.
+
+The return of [Sixel](https://en.wikipedia.org/wiki/Sixel) content in
+terminals has made it popular to display images in newer terminal applications.
+Neovim does not support support sixels content natively, but this plugin's
+sister plugin (and dependency) enables this functionality. See
+[nvim-image-extmarks](https://github.com/queue-miscreant/nvim-image-extmarks)
+for more information.
+
+
+FENCES                                                  *fence-preview-fences*
+
+One of Vimwiki's nice features is that it can dynamically load syntax
+highlights for content between pairs of ``` (termed "fences") based on the
+|filetype| specified. For example: >
+
+  ```latex
+  \int 2xdx = x^2 + C
+  ```
+
+Will use LaTeX highlights.
+
+Buying into tagging content like this makes it easy to associate it
+with a way to "run" it to create augmented output.
+
+For example, sometimes it would be nice to add some typeset content to some
+notes. Instead of trying to draw it out as ASCII art, this plugin allows you
+to write it out as a LaTeX snippet and render it as an image.
+
+Unfortunately most LaTeX installations don't output raster graphics and can't
+output the rendered file (usually a DVI or PDF) to standard output. This
+combination means that overcoming the first can't be done by piping it
+into another program.
+                                                        *fence-preview-pipelines*
+
+To get around this, this plugin allows you to define `pipelines`. Pipelines
+are |Lua| functions that gradually transform the buffer content into a form
+which can be displayed back in the buffer, analogously to UNIX pipes.
+
+For an example, see the description of the LaTeX pipeline at |fence-preview-#latex|.
+
+
+FENCE OPTIONS                                           *fence-preview-fence-options*
+                                                        *fence_option*
+
+Writing more than the filetype to the top fence tends to mess with vimwiki.
+The bottom fence is a little nicer. Options can be specified there to provide
+further control to the pipelines.
+
+{height}
+
+By default, content is rendered using the same number of lines
+occupied by the fence. `height` changes this to the number of lines specified.
+
+For example,
+>
+  ```latex
+  \int 2xdx = x^2 + C
+  ```height=5
+
+Will render with 5 rather than 3 lines.
+
+
+--------------------------------------------------------------------------------
+DEFAULT PIPELINES                                       *fence-preview-default-pipelines*
+
+This plugin provides a few default pipelines.
+
+
+LATEX                                                   *fence-preview-#latex*
+
+The LaTeX pipeline consists of the following stages:
+
+  1. Write the fenced content to a temporary file
+  3. Run `latex` on the file from step 1, generating a DVI file
+  3. Run `dvisvgm` on the on the file from step 2, generating an SVG file
+  4. Rasterize the file from step 3 using ImageMagick
+  5. Display the raster image as an image extmark
+
+All stages are cached using the hash of the buffer content so that each stage
+can be skipped if the target file already exists.
+
+MATH                                                    *fence-preview-#math*
+
+The math pipeline is similar to the LaTeX one, but implicitly appends a
+preamble to get into math mode immediately. It also automatically imports the
+packages `amsmath`, `amsfonts`, `amsthm`, and `xcolor`.
+
+Math content is rendered as white-on-black if the |'background'| option is set
+to "dark". Otherwise, content is rendered as black-on white.
+
+It includes some extra configuration options:
+
+{math_start}
+    A string containing the LaTeX preamble. This value gets prepended to the
+    buffer content before it is written to a `.tex` file.
+
+    It may contain two format specifiers (`%s`). The first is used with
+    `extra_preamble` and the second is used with `extra_document` (see below).
+
+    Note that the default value of this string accomplishes the imports above
+    and produces output which tends to render nicely as images. Change it at
+    your own risk.
+
+{math_end}
+    A string which terminates the commands used in the LaTeX preamble.
+
+{extra_packages}
+    A list of strings containing additional package imports.
+
+{extra_preamble}
+    A string with additional LaTeX content to add immediately before
+    `\begin{document}`.
+
+{extra_document}
+    A string with additional LaTeX content to add immediately after
+    `\begin{document}`.
+
+{force_mode}
+    Forces content to render as if 'background' option was set to the
+    string specified.
+
+
+GNUPLOT                                                 *fence-preview-#gnuplot*
+
+The gnuplot pipeline renders a gnuplot plot as an image.
+
+Similarly to math, gnuplot is invoked with a preamble consisting of:
+>
+    set output '...'
+    set terminal png
+
+where ... is the temporary output filename.
+
+
+PYTHON                                                  *fence-preview-#python*
+
+The Python pipeline runs the fenced code in the current default Python
+interpreter.
+
+By default, the output will be shown as text. Adding {image} as a |fence_option|
+will attempt to display the image whose filename is output by the program.
+
+Similarly, the options {latex} and {math} chain into their respective pipelines.
+
+
+--------------------------------------------------------------------------------
+PIPELINE INTERNALS                                      *fence-preview-pipeline-internals*
+
+
+
+--------------------------------------------------------------------------------
+COMMANDS                                                *plugin-command*
+
+Plugin commands
+
+--------------------------------------------------------------------------------
+KEYS                                                    *plugin-keys*
+
+Plugin keybinds
+
+--------------------------------------------------------------------------------
+FUNCTIONS                                               *plugin-function*
+
+Exposed functions
+
+--------------------------------------------------------------------------------
+CONFIGURATION                                           *plugin-configuration*
+
+Global variables
+
+--------------------------------------------------------------------------------
+HIGHLIGHTS                                              *plugin-highlights*
+
+Plugin highlights
+
+================================================================================
+vim:tw=80:nosta:ft=help:fen:
