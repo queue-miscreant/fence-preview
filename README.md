@@ -69,6 +69,8 @@ Plugin highlights
 TODOs
 -----
 
+- Refactor extmark manipulations into its own file
+- Cache files in persistent directory between sessions
 - Documentation
 - Only run pipeline when content changes
 - Add ability to halt running pipelines

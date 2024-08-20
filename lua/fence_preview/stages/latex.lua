@@ -24,7 +24,7 @@ function latex.add_math_preamble(args)
 
   -- Background color based on current `background` option
   local background = settings.latex.force_mode == "" and vim.o.background or settings.latex.force_mode
-  local extra_document = ""
+  local extra_document = settings.latex.extra_document
   if background == "dark" then
     extra_document = DARK_COLORS
   end

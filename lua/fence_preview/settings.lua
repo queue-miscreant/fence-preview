@@ -4,7 +4,7 @@ local settings = {
   maximum_text_lines = 3,
 
   latex = {
-    math_start = ([[
+    math_start = [[
     \documentclass[20pt, preview]{standalone}
     \nonstopmode
     \usepackage{amsmath,amsfonts,amsthm}
@@ -13,13 +13,14 @@ local settings = {
     \begin{document}
     %s
     \[
-    ]]),
+    ]],
     math_end = [[
     \]
     \end{document}
     ]],
-    force_mode = "", -- "dark" or "light" to use instead of vim.g
+    force_mode = "", -- "dark" or "light" to use instead of vim.o.background
     extra_preamble = [[]],
+    extra_document = [[]],
     extra_packages = {},
   }
 }
