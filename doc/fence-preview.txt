@@ -5,7 +5,7 @@ INTRODUCTION                                            *fence-preview-introduct
 
 A markdown preview extension for displaying images and rich content.
 
-Markdown content is great for creating rich content which can be used to
+Markdown content is great for creating rich content which can also be used to
 generate HTML for the web. It has found use in note-taking software such as
 [Obsidian](https://obsidian.md/) and the Vim community's own
 [vimwiki](https://github.com/vimwiki/vimwiki).
@@ -13,15 +13,19 @@ generate HTML for the web. It has found use in note-taking software such as
 Since native vimwiki is already a quite nice environment, this
 plugin adds an independent layer of functionality to markdown files.
 
-The return of [Sixel](https://en.wikipedia.org/wiki/Sixel) content in
-terminals has made it popular to display images in newer terminal applications.
-Neovim does not support support sixels content natively, but this plugin's
+The return of [Sixel](https://en.wikipedia.org/wiki/Sixel) content in terminals
+has made it popular to display images in the terminal in newer applications.
+Neovim does not support support sixel content natively, but this plugin's
 sister plugin (and dependency) enables this functionality. See
 [nvim-image-extmarks](https://github.com/queue-miscreant/nvim-image-extmarks)
 for more information.
 
 
 FENCES                                                  *fence-preview-fences*
+
+Sometimes it would be nice to add some typeset content to some
+notes. Instead of trying to draw it out as ASCII art, this plugin allows you
+to write it out as a LaTeX snippet and render it as an image.
 
 One of Vimwiki's nice features is that it can dynamically load syntax
 highlights for content between pairs of ``` (termed "fences") based on the
@@ -31,26 +35,12 @@ highlights for content between pairs of ``` (termed "fences") based on the
   \int 2xdx = x^2 + C
   ```
 
-Will use LaTeX highlights.
+will use LaTeX highlights. Buying into tagging content like this makes it
+easy to associate it with a way to "run" it.
 
-Buying into tagging content like this makes it easy to associate it
-with a way to "run" it to create augmented output.
-
-For example, sometimes it would be nice to add some typeset content to some
-notes. Instead of trying to draw it out as ASCII art, this plugin allows you
-to write it out as a LaTeX snippet and render it as an image.
-
-Unfortunately most LaTeX installations don't output raster graphics and can't
-output the rendered file (usually a DVI or PDF) to standard output. This
-combination means that overcoming the first can't be done by piping it
-into another program.
-                                                        *fence-preview-pipelines*
-
-To get around this, this plugin allows you to define `pipelines`. Pipelines
-are |Lua| functions that gradually transform the buffer content into a form
-which can be displayed back in the buffer, analogously to UNIX pipes.
-
-For an example, see the description of the LaTeX pipeline at |fence-preview-#latex|.
+That's where this plugin comes in. Rather than just having a block of LaTeX
+in your notes, it displays as an image displayed inside Neovim.
+See |fence-preview-#latex| for more information about this one specifically.
 
 
 FENCE OPTIONS                                           *fence-preview-fence-options*
@@ -58,7 +48,7 @@ FENCE OPTIONS                                           *fence-preview-fence-opt
 
 Writing more than the filetype to the top fence tends to mess with vimwiki.
 The bottom fence is a little nicer. Options can be specified there to provide
-further control to the pipelines.
+further control to the plugin.
 
 {height}
 
@@ -72,15 +62,46 @@ For example,
   ```height=5
 
 Will render with 5 rather than 3 lines.
+Note that rendering a taller image than the fence only works properly on
+Neovim 0.10+. (TODO)
+
+
+PREVIEWS                                                *fence-preview-previews*
+
+Markdown also lets you write inline image previews using ![]() syntax.
+In this plugin, they accomplish the same thing as fences, but for external
+files (such as data in a .tex), or even images.
+
+(TODO): Images
 
 
 --------------------------------------------------------------------------------
-DEFAULT PIPELINES                                       *fence-preview-default-pipelines*
+PIPELINES                                               *fence-preview-pipelines*
 
-This plugin provides a few default pipelines.
+Assuming data in the buffer is a "source", we'd like to pass it through
+(possibly multiple) "compilation" steps before we can display it back to the
+user. While UNIX pipes should enable you to chain together these programs,
+there are problems with this approach.
+
+For example, LaTeX installations don't output raster graphics and can't
+output the rendered file (usually a DVI or PDF) to standard output. This
+combination means that overcoming the first can't be done by piping it
+into another program. Additionally, errors in one part (running `latex`) and
+errors in the next (converting the DVI to something that can be displayed)
+are hard to deal with.
+
+To this end, this plugin uses pipelines to wrap lists of instructions (|Lua|
+functions to accomplish something similar.
+
+Pipelines can be associated to both the filetype of a fence and the extension of
+an inline preview.
+
+                                                        *fence-preview-default-pipelines*
+The plugin provides a few default pipelines.
 
 
 LATEX                                                   *fence-preview-#latex*
+                                                        *fence-preview-.tex*
 
 The LaTeX pipeline consists of the following stages:
 
@@ -92,6 +113,10 @@ The LaTeX pipeline consists of the following stages:
 
 All stages are cached using the hash of the buffer content so that each stage
 can be skipped if the target file already exists.
+
+The first stage is skipped if the content comes from a preview with extension
+`.tex` rather than a fence.
+
 
 MATH                                                    *fence-preview-#math*
 
@@ -135,6 +160,7 @@ It includes some extra configuration options:
 
 
 GNUPLOT                                                 *fence-preview-#gnuplot*
+                                                        *fence-preview-.plt*
 
 The gnuplot pipeline renders a gnuplot plot as an image.
 
@@ -144,6 +170,9 @@ Similarly to math, gnuplot is invoked with a preamble consisting of:
     set terminal png
 
 where ... is the temporary output filename.
+
+An additional stage is invoked if the content comes from a preview with
+extension `.plt` rather than a fence.
 
 
 PYTHON                                                  *fence-preview-#python*
@@ -156,36 +185,120 @@ will attempt to display the image whose filename is output by the program.
 
 Similarly, the options {latex} and {math} chain into their respective pipelines.
 
+--------------------------------------------------------------------------------
+COMMANDS                                                *fence-preview-command*
+
+(TODO): write better descriptions
+
+FenceRefresh                                            *:FenceRefresh*
+
+Re-run the pipeline on the fence or preview under the cursor.
+
+
+FenceRefreshAll                                         *:FenceRefreshAll*
+
+Re-run the pipeline on all plugins in the current buffer.
+
+
+FenceOpen                                               *:FenceOpen*
+
+Open the fenced content in a side window.
+
 
 --------------------------------------------------------------------------------
-PIPELINE INTERNALS                                      *fence-preview-pipeline-internals*
+CONFIGURATION                                           *fence-preview-configuration*
 
+(TODO): Move math plugin documentation here
 
 
 --------------------------------------------------------------------------------
-COMMANDS                                                *plugin-command*
+PIPELINE NAMES                                          *fence-preview-pipeline-names*
 
-Plugin commands
+Each defined pipeline is associated to an internal name. The following
+pipelines should always exist.
+
+
+                                                        *fence-preview-highlights*
+OUTPUT
+
+"display"
+    Interpret the input as a filepath. If the file exists and is an image
+    (TODO), display it as an image extmark.
+
+"text"
+    Interpret the input as text. Create an extmark containing the text
+    below the file content.
+    To change how this displays, set the highlight |FencePreviewText|.
+
+"error"
+    Interpret the input as text. Create an extmark containing the text
+    next to the file content which displays as an error.
+    To change how this displays, set the highlight |FencePreviewError|.
+
+
+FENCE FILETYPES
+
+Pipelines associated to a filetype begin with `#`. For example, the pipeline
+which gets run on LaTeX fences is named "#latex".
+
+
+PREVEIEW EXTENSIONS
+
+Pipelines associated to the extension of a preview begin with `.` (the dot).
+For example, the pipeline which gets run on previews with the extension `.tex`
+is named ".tex".
+
+(TODO): images
+
 
 --------------------------------------------------------------------------------
-KEYS                                                    *plugin-keys*
+PIPELINE STAGES                                         *fence-preview-pipeline-stages*
 
-Plugin keybinds
+Pipelines are composed of a list of stages -- Lua functions with a particular
+signature.
+
+                                                        *fence-preview-synchronous-stage*
+At their simplest, stages have the following signature:
+
+    {input}: pipeline_input
+        The input to the pipeline. This is a table consisting of two entries:
+
+        "node", a representation of the data in the buffer
+        "previous", the output of the previous pipeline stage
+
+    {@return}: any, string?
+        The first return value is the value of the next stage's "input.previous".
+        Returning `nil` will not engage the next stage.
+
+        The second value can be left absent or set to `nil` to proceed to the next
+        stage of the pipeline.
+        Alternatively, it may be a string containing the name of another pipeline
+        (see |fence-preview-pipeline-names|). This will skip all remaining stages
+        from the current pipeline.
+
+                                                        *fence-preview-asynchronous-stage*
+However, when working with |uv| and external process, one does not have the
+luxury of synchronous callbacks.
+Asynchronous stages can also be defined using the signature:
+
+    {input}: pipeline_input
+        The same as above.
+
+    {callback}: fun(ret: any, maybe_defer?: string|nil)
+        Asynchronous callback for working with uv (see also |lua-loop|).
+        The arguments to the function are the same as the ones in the return
+        type for synchronous stages.
+
+    {error_callback}: fun(msg: string)
+        Asynchronous error callback for working with uv.
+        This will be interpreted similarly to Lua's builtin `error` in
+        synchronous pipelines.
 
 --------------------------------------------------------------------------------
-FUNCTIONS                                               *plugin-function*
+FUNCTIONS                                               *fence-preview-function*
 
-Exposed functions
+(TODO): How to define your own pipeline
 
---------------------------------------------------------------------------------
-CONFIGURATION                                           *plugin-configuration*
-
-Global variables
-
---------------------------------------------------------------------------------
-HIGHLIGHTS                                              *plugin-highlights*
-
-Plugin highlights
 
 ================================================================================
-vim:tw=80:nosta:ft=help:fen:
+vim:tw=80:sta:ft=help:fen:

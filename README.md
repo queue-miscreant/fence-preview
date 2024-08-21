@@ -76,3 +76,4 @@ TODOs
 - Add ability to halt running pipelines
 - Better splits
     - Preambles for fence content (TeX for math so that syntax works properly, Python imports(?))
+- URL previews
