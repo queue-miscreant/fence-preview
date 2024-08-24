@@ -10,55 +10,9 @@ local node_metatable = {}
 -- Allow extensions outside of this file
 delimit.node_metatable = node_metatable
 
----@class parsing_node
----@field type "fence"|"file"
----@field parameters string[]
----@field start integer
----@field end_? integer
----@field content? string[]
----@field id? integer
----@field hash? string
-
----@class fence_params
----@field filetype string
----@field height? integer
----@field content string[]
----@field others string[]
-
----@class fence_node
----@field type "fence"
----@field content string[]
----@field params fence_params
----@field range [integer, integer]
----@field id integer
----@field hash string
----@field buffer integer
----@field draw_number? integer
----@field logs string[]
----
----@field log? fun(self: fence_node, ...: any)
----@field log_self? fun(self: fence_node)
----@field clear_logs? fun(self: fence_node)
-
----@class file_node
----@field type "file"
----@field filename string
----@field range [integer, integer]
----@field id integer
----@field hash string
----@field buffer integer
----@field draw_number? integer
----@field logs string[]
----
----@field log? fun(self: file_node, ...: any)
----@field log_self? fun(self: file_node)
----@field clear_logs? fun(self: file_node)
-
----@alias node fence_node|file_node
-
 
 ---@param params_list string[]
----@return fence_params|nil
+---@return FenceParams|nil
 local function parse_node_parameters(params_list)
   local filetype = nil
   local height = nil
@@ -99,16 +53,24 @@ local function parse_node_parameters(params_list)
   }
 end
 
+---@class ParsingNode
+---@field type "fence"|"file"
+---@field parameters string[]
+---@field start integer
+---@field end_? integer
+---@field content? string[]
+---@field id? integer
+---@field hash? string
 
----@param node parsing_node
----@return node|nil
+---@param node ParsingNode
+---@return Node|nil
 local function cook_node(node, buffer_number)
-  ---@type node
+  ---@type Node
   local ret
 
   if node.type == "file" then
     local filename = node.parameters[1]
-    ---@type file_node
+    ---@type FileNode
     ret = {
       type = "file",
       filename = filename,
@@ -123,7 +85,7 @@ local function cook_node(node, buffer_number)
     if parsed == nil then return nil end
     if #node.content == 0 then return nil end
 
-    ---@type fence_node
+    ---@type FenceNode
     ret = {
       type = "fence",
       params = parsed,
@@ -142,14 +104,14 @@ local function cook_node(node, buffer_number)
 end
 
 
----@param node node
+---@param node Node
 ---@param content string[]
 function delimit.set_node_content(node, content)
   node.content = content
   node.hash = vim.fn.sha256(vim.trim(table.concat(content, "\n")))
 end
 
----@param self node
+---@param self Node
 ---@param ... any
 function node_metatable:log(...)
   local args = { ... }
@@ -161,7 +123,7 @@ function node_metatable:log(...)
   end
 end
 
----@param self node
+---@param self Node
 function node_metatable:log_self()
   self:log({
     type = self.type,
@@ -174,7 +136,7 @@ function node_metatable:log_self()
   })
 end
 
----@param self node
+---@param self Node
 function node_metatable:clear_logs()
   self.logs = {}
 end
@@ -186,11 +148,11 @@ end
 --
 ---@param lines string[]
 ---@param buffer_number integer
----@return node[]
+---@return Node[]
 function delimit.generate_nodes(lines, buffer_number)
-  ---@type node[]
+  ---@type Node[]
   local nodes = {}
-  ---@type parsing_node|nil
+  ---@type ParsingNode|nil
   local current_node = nil
   local line_for_file = false
 

@@ -4,7 +4,7 @@ local stages = {
   latex = require "fence_preview.stages.latex",
   gnuplot = require "fence_preview.stages.gnuplot",
   python = require "fence_preview.stages.python",
-  node_action = require "fence_preview.stages.node_action"
+  node_action = require "fence_preview.stages.node_action",
 }
 
 -- Basic pipeline terminator: display an image
@@ -24,7 +24,6 @@ pipeline.define("error", {
 
 -- TeX file pipeline
 pipeline.define(".tex", {
-  stages.latex.write_tex,
   stages.latex.generate_dvi_from_latex,
   stages.latex.generate_svg_from_dvi,
   -- latex.rasterize,

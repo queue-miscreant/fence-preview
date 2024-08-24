@@ -11,7 +11,7 @@ local DARK_COLORS = [[
 
 -- Add a standard LaTeX preamble to lines which should always be interpreted in math mode.
 --
----@type pipeline_stage
+---@type PipelineStage
 function latex.add_math_preamble(args)
   local extra_packages = table.concat(
     vim.tbl_map(
@@ -41,7 +41,7 @@ end
 -- Writes the argument (as a list of strings) to a ".tex" file.
 -- Passes the resulting filepath if successful.
 --
----@type pipeline_stage
+---@type PipelineStage
 function latex.write_tex(args, callback, error_callback)
   -- create a new tex file containing the equation
   local tex_path = path.new_temp(args.node.hash, ".tex")
@@ -108,9 +108,9 @@ end
 -- Run `latex` on the argument, which should be the path a TeX file.
 -- Passes the resulting filepath if successful.
 --
----@type pipeline_stage
+---@type PipelineStage
 function latex.generate_dvi_from_latex(args, callback, error_callback)
-  local tex_path = args.previous --[[@as path]]
+  local tex_path = args.previous --[[@as Path]]
   if tex_path.exists == nil or not tex_path:exists() then
     error_callback("LaTeX file not found")
     return
@@ -165,9 +165,9 @@ end
 -- Convert the argument, which should be the path to an DVI file, to a SVG.
 -- Passes the resulting filepath if successful.
 --
----@type pipeline_stage
+---@type PipelineStage
 function latex.generate_svg_from_dvi(args, callback, error_callback)
-  local dvi_path = args.previous --[[@as path]]
+  local dvi_path = args.previous --[[@as Path]]
   if dvi_path.exists == nil or not dvi_path:exists() then error_callback("DVI file not found") return end
 
   -- convert the dvi to a svg file with the woff font format
@@ -203,9 +203,9 @@ end
 -- image (specifically PNG) using ImageMagick.
 -- Passes the resulting filepath if successful.
 --
----@type pipeline_stage
+---@type PipelineStage
 function latex.rasterize(args, callback, error_callback)
-  local svg_path = args.previous --[[@as path]]
+  local svg_path = args.previous --[[@as Path]]
   if not svg_path.exists or not svg_path:exists() then error_callback("SVG file not found") return end
 
   -- convert the dvi to a svg file with the woff font format

@@ -10,7 +10,7 @@ local pipeline = require "fence_preview.pipeline"
 local side_window = {}
 
 
----@param node fence_node
+---@param node FenceNode
 function side_window.enter_window(node)
   local current_buffer = vim.api.nvim_get_current_buf()
 
@@ -71,7 +71,7 @@ function side_window.enter_window(node)
         node.range[2] = node.range[2] + offset
 
         -- Retrieve tree from buffer
-        ---@type buffer_data
+        ---@type BufferData
         local buffer_data = buffer_tree.buffers_to_data[tostring(current_buffer)]
         if buffer_data == nil then return end
 

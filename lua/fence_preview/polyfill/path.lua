@@ -1,10 +1,21 @@
--- fence_preview.path.lua
+-- fence_preview.polyfill.path
 --
 -- Object-oriented style polyfills for vim.fs path manipulations
 
-local path = {
+---@class Path
+---@field path string
+---@field suffix string
+---@field basename string
+---
+---@field exists fun(path: Path): boolean
+---@field with_suffix fun(path: Path, suffix: string): Path
+---@field parent fun(path: Path): Path
+---@field relative_to fun(path: Path): Path
+
+local Path = {
   tempdir = vim.fn.fnamemodify(vim.fn.tempname(), ":h")
 }
+Path.__index = Path
 
 ---@type fun(path: string): string
 local normalize
@@ -38,22 +49,13 @@ else
   joinpath = vim.fs.joinpath
 end
 
----@class path
----@field path string
----@field suffix string
----@field basename string
----
----@field exists fun(path: path): boolean
----@field with_suffix fun(path: path, suffix: string): path
----@field parent fun(path: path): path
----@field relative_to fun(path: path): path
 
 -- Create a new path from the string "target".
 -- The path will be attempted to be converted to an absolute path.
 --
 ---@param target string
----@return path
-function path.new(target)
+---@return Path
+function Path.new(target)
   target = normalize(target)
   local base = basename(target)
   local no_suffix, suffix = base:match("([^.]*)(%.?%w*)$")
@@ -64,8 +66,7 @@ function path.new(target)
     suffix = suffix,
     basename = base,
   }
-  setmetatable(ret, path)
-  path.__index = path
+  setmetatable(ret, Path)
 
   return ret
 end
@@ -75,8 +76,8 @@ end
 --
 ---@param name string
 ---@param suffix? string
----@return path
-function path.new_temp(name, suffix)
+---@return Path
+function Path.new_temp(name, suffix)
   local base = name
   local no_suffix = name
   if suffix == nil then
@@ -84,24 +85,21 @@ function path.new_temp(name, suffix)
   end
 
   local ret = {
-    path = path.tempdir .. "/" .. name .. suffix,
+    path = Path.tempdir .. "/" .. name .. suffix,
     _no_suffix = no_suffix,
     suffix = suffix,
     basename = base,
   }
-  setmetatable(ret, path)
-  path.__index = path
+  setmetatable(ret, Path)
 
   return ret
 end
 
----@return string
-function path:__tostring()
-  return self.path
-end
 
----@return path
-function path:parent()
+-- Create a new path wrapping the parent of the current one.
+--
+---@return Path
+function Path:parent()
   local dir = dirname(self.path)
   local ret = {
     path = dirname,
@@ -109,15 +107,17 @@ function path:parent()
     suffix = "",
     basename = basename(dir)
   }
-  setmetatable(ret, path)
-  path.__index = path
+  setmetatable(ret, Path)
 
   return ret
 end
 
+
+-- Create a new path with a different suffix ("extension").
+--
 ---@param suffix string
----@return path
-function path:with_suffix(suffix)
+---@return Path
+function Path:with_suffix(suffix)
   local dir = dirname(self.path)
   local base = self._no_suffix .. suffix
   local ret = {
@@ -126,15 +126,18 @@ function path:with_suffix(suffix)
     suffix = suffix,
     basename = base
   }
-  setmetatable(ret, path)
-  path.__index = path
+  setmetatable(ret, Path)
 
   return ret
 end
 
----@param cwd path|string
----@return path
-function path:relative_to(cwd)
+
+-- Convert a relative path to an absolute one relative to `cwd`.
+-- If the path is already absolute, this does nothing.
+--
+---@param cwd Path|string
+---@return Path
+function Path:relative_to(cwd)
   if self.path:sub(1,1) == "/" then
     return self
   end
@@ -151,15 +154,17 @@ function path:relative_to(cwd)
     suffix = self.suffix,
     basename = self.basename
   }
-  setmetatable(ret, path)
-  path.__index = path
+  setmetatable(ret, Path)
 
   return ret
 end
 
+
+-- Test the existence of the path.
+--
 ---@return boolean
-function path:exists()
+function Path:exists()
   return vim.fn.filereadable(self.path) ~= 0
 end
 
-return path
+return Path

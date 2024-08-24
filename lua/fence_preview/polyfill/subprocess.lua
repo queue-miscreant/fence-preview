@@ -1,21 +1,25 @@
+-- fence_preview.polyfill.subprocess
+--
+-- Polyfill for spawning subprocesses with pipes to its standard streams
+
 local subprocess = {
   timeout_ms = 5000,
 }
 
----@class handle
+---@class UVHandle
 
----@class pipe
----@field write fun(self: pipe, input: string|string[], callback?: fun(err: string|nil))
----@field read_start fun(self: pipe, callback: fun(err: string|nil, data: string|nil))
----@field shutdown fun(self: pipe, callback?: fun())
+---@class UVPipe
+---@field write fun(self: UVPipe, input: string|string[], callback?: fun(err: string|nil))
+---@field read_start fun(self: UVPipe, callback: fun(err: string|nil, data: string|nil))
+---@field shutdown fun(self: UVPipe, callback?: fun())
 
----@class subprocess_return
+---@class SubprocessReturn
 ---@field code integer
 ---@field signal integer
 ---@field stdout string
 ---@field stderr string
 
----@class almost_luv_params
+---@class AlmostUVParams
 ---@field args string[]
 ---@field stdio? [boolean, boolean, boolean]
 ---@field cwd? string
@@ -24,10 +28,10 @@ local subprocess = {
 -- TODO: Maybe wrap vim.spawn instead of luv.spawn?
 --
 ---@param process string
----@param params almost_luv_params The same as the second argument to luv.spawn, but with booleans instead of pipe objects.
----@param callback fun(ret: subprocess_return) A callback function which contains stdout and stderr content
+---@param params AlmostUVParams The same as the second argument to luv.spawn, but with booleans instead of pipe objects.
+---@param callback fun(ret: SubprocessReturn) A callback function which contains stdout and stderr content
 ---@param callback_timeout? fun() A callback function which is run if the process is still active after `subprocess.timeout_ms`
----@return handle|nil, pipe|nil
+---@return UVHandle|nil, UVPipe|nil
 function subprocess.spawn(process, params, callback, callback_timeout)
   if params.stdio == nil then return nil end
   local stdio = params.stdio
@@ -36,9 +40,9 @@ function subprocess.spawn(process, params, callback, callback_timeout)
   local stdout = nil
   local stderr = nil
   if stdio then
-    if stdio[1] then stdin = vim.loop.new_pipe() --[[@as pipe]] end
-    if stdio[2] then stdout = vim.loop.new_pipe() --[[@as pipe]] end
-    if stdio[3] then stderr = vim.loop.new_pipe() --[[@as pipe]] end
+    if stdio[1] then stdin = vim.loop.new_pipe() --[[@as UVPipe]] end
+    if stdio[2] then stdout = vim.loop.new_pipe() --[[@as UVPipe]] end
+    if stdio[3] then stderr = vim.loop.new_pipe() --[[@as UVPipe]] end
   end
 
   ---@diagnostic disable-next-line

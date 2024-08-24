@@ -5,25 +5,18 @@
 
 local delimit = require "fence_preview.delimit"
 local pipeline = require "fence_preview.pipeline"
-
----@class pipeline_extmark
----@field id integer
----@field type "sixel" | "text"
-
----@class buffer_data
----@field nodes node[]
----@field node_id_to_extmarks {[string]: pipeline_extmark}
+local sixel_extmarks = require "sixel_extmarks"
 
 
 local buffer_tree = {
-  ---@type {[string]: buffer_data}
+  ---@type {[string]: BufferData}
   buffers_to_data = {},
   ---@type integer
   TEXT_NAMESPACE = vim.api.nvim_create_namespace("fence-preview-text"),
 }
 
 
----@param node node
+---@param node Node
 ---@param cursor_line integer
 ---@return boolean
 local function cursor_in_node(node, cursor_line)
@@ -33,8 +26,8 @@ end
 
 
 ---@param cursor_line integer
----@param nodes? node[]
----@return node|nil
+---@param nodes? Node[]
+---@return Node|nil
 function buffer_tree.node_at_line(cursor_line, nodes)
   if nodes == nil then
     local current_buffer = vim.api.nvim_get_current_buf()
@@ -51,8 +44,8 @@ function buffer_tree.node_at_line(cursor_line, nodes)
   return nil
 end
 
----@param node1 node
----@param node2 node
+---@param node1 Node
+---@param node2 Node
 local function compare_nodes(node1, node2)
   -- Nodes have the same content
   return (
@@ -60,7 +53,7 @@ local function compare_nodes(node1, node2)
   )
 end
 
----@param extmark pipeline_extmark
+---@param extmark PipelineExtmark
 function buffer_tree.remove_extmark(extmark)
   if extmark.type == "sixel" then
     sixel_extmarks.remove(extmark.id)
@@ -69,7 +62,7 @@ function buffer_tree.remove_extmark(extmark)
   end
 end
 
----@param buffer_data buffer_data
+---@param buffer_data BufferData
 local function remove_unused_extmarks(buffer_data)
   -- Find all extmarks which are in the current extmark map
   local sixel_extmark_ids = {}
@@ -87,7 +80,7 @@ local function remove_unused_extmarks(buffer_data)
   for _, extmark in pairs(sixel_extmarks.get(0, -1)) do
     current_images[tostring(extmark.id)] = true
     if sixel_extmark_ids[tostring(extmark.id)] == nil then
-      sixel_extmarks.remove_extmark(extmark.id)
+      sixel_extmarks.remove(extmark.id)
     end
   end
   -- Remove text extmarks which are not in the map
@@ -168,7 +161,7 @@ function buffer_tree.reload_buffer()
   buffer_data.nodes = nodes
   pipeline.pipe_nodes(
     vim.tbl_filter(
-      ---@param node node
+      ---@param node Node
       function(node)
         node.draw_number = vim.b.fence_preview_draw_number
         return no_process[tostring(node.id)] == nil
@@ -198,7 +191,7 @@ function buffer_tree.try_update_inside_node()
   vim.wo.foldmethod = "manual"
   pipeline.pipe_nodes(
     vim.tbl_filter(
-      ---@param node node
+      ---@param node Node
       function(node)
         node.draw_number = vim.b.fence_preview_draw_number
         return node.id == vim.b.fence_preview_inside_node

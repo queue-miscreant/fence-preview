@@ -6,7 +6,7 @@ local python = {}
 -- Pipe the argument (as a list of strings) into a Python interpreter,
 -- Passes along the output lines if successful.
 --
----@type pipeline_stage
+---@type PipelineStage
 function python.run_python(args, callback, error_callback)
   local code = args.previous --[[@as string[] ]]
 

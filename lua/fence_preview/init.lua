@@ -22,7 +22,7 @@ function fence_preview.show_logs()
   local current_buffer = vim.api.nvim_get_current_buf()
   local logs = {}
   vim.tbl_map(
-    ---@param node node
+    ---@param node Node
     function(node)
       vim.list_extend(logs, node.logs)
     end,

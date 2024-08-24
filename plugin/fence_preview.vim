@@ -22,8 +22,6 @@ if g:image_extmarks_allow_virtual == 0
   let g:fence_preview_use_virtual = 0
 end
 
-lua require "fence_preview"
-
 hi default link FencePreviewText Comment
 hi default link FencePreviewError ErrorMsg
 

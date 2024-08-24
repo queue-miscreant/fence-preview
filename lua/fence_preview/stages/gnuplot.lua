@@ -5,9 +5,9 @@ local gnuplot = {}
 
 -- Read a file and pass its contents as a list of strings
 --
----@type pipeline_stage
+---@type PipelineStage
 function gnuplot.read_file(args, callback, error_callback)
-  local file_path = args.previous --[[@as path]]
+  local file_path = args.previous --[[@as Path]]
 
   local file = io.open(file_path.path)
   if file == nil then
@@ -24,7 +24,7 @@ end
 -- Pipe the argument (as a list of strings) through gnuplot, targeting a PNG file.
 -- Passes the resulting filepath if successful.
 --
----@type pipeline_stage
+---@type PipelineStage
 function gnuplot.gnuplot_to_png(args, callback, error_callback)
   local content = args.previous --[[@as string[] ]]
   local png_path = path.new_temp(args.node.hash, ".png")

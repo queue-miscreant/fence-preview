@@ -1,12 +1,13 @@
 local buffer_tree = require "fence_preview.buffer_tree"
 local settings = require "fence_preview.settings"
+local sixel_extmarks = require "sixel_extmarks"
 
 local node_action = {}
 
 
 -- Apply folds to a node if it has a preferred height.
 --
----@param node node
+---@param node Node
 function node_action.refold(node)
   if node.type == "file" then return end
 
@@ -46,9 +47,9 @@ end
 
 -- Attempt to create or set an image extmark at the node location
 --
----@type pipeline_stage
+---@type PipelineStage
 function node_action.try_draw_extmark(args)
-  local image_path = args.previous --[[@as path]]
+  local image_path = args.previous --[[@as Path]]
   local node = args.node
 
   vim.defer_fn(function()
@@ -216,7 +217,7 @@ end
 -- Attempt to create or set an extmark containing an error message over the node
 --
 ---@param highlight string
----@return pipeline_stage
+---@return PipelineStage
 local function text_extmark(highlight, extra_info)
   return function(args)
     local message = args.previous

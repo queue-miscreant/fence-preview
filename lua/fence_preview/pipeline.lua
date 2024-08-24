@@ -2,30 +2,19 @@ local path = require "fence_preview.polyfill.path"
 local delimit = require "fence_preview.delimit"
 
 local pipeline = {
-  ---@type {[string]: pipeline}
+  ---@type {[string]: Pipeline}
   runners = {},
 }
 
-
----@class pipeline_input
----@field previous any
----@field node node
-
----@alias pipeline_callback fun(ret: any, maybe_defer?: string|nil)
----@alias pipeline_stage fun(input: pipeline_input, callback?: pipeline_callback, error_callback?: fun(msg: string)): any, string?
-
----@class pipeline
----@field stages pipeline_stage[]
----@field manual boolean
 
 -- Declare a pipeline with a name. The should be a list containing pipeline stages, or
 -- a string to a pipeline stage which already exists.
 --
 ---@param name string Name of the pipleine stage
----@param funs (pipeline_stage | string)[] A list of pipline stages to associate to a name
+---@param funs (PipelineStage | string)[] A list of pipline stages to associate to a name
 ---@param manual? boolean
 function pipeline.define(name, funs, manual)
-  ---@type pipeline_stage[]
+  ---@type PipelineStage[]
   local ret = {}
   local had_string = false
 
@@ -58,8 +47,8 @@ end
 -- Should an error occur inside a function, the runner "error" (defined with `pipeline.define`)
 -- is invoked.
 --
----@param input pipeline_input
----@param stages pipeline_stage[]
+---@param input PipelineInput
+---@param stages PipelineStage[]
 function pipeline.run(input, stages)
   -- Simple error callback wrapper to run the stage named `error`, if one exists
   local function cb(e)
@@ -88,7 +77,7 @@ function pipeline.run(input, stages)
         stage = 1
         stages = pipeline.runners[maybe_defer].stages
       end
-      ---@type pipeline_stage
+      ---@type PipelineStage
       local next_stage = stages[stage]
       if next_stage == nil then return end
 
@@ -111,7 +100,7 @@ end
 -- Fence nodes attempt to find and run a pipeline based on the filetype, preceded
 -- by a "#" (e.g., "#python"). If no pipeline exists, it will not be run.
 --
----@param node node A node to run through a pipeline
+---@param node Node A node to run through a pipeline
 ---@param manual? boolean
 function pipeline.pipe_node(node, manual)
   ---@type string
@@ -121,7 +110,7 @@ function pipeline.pipe_node(node, manual)
 
   -- File nodes just run the pipeline `.{ext}`, or image display if none exists
   if node.type == "file" then
-    ---@cast node file_node
+    ---@cast node FileNode
     value = path.new(node.filename)
     if value.suffix == nil then return nil end
 
@@ -132,7 +121,7 @@ function pipeline.pipe_node(node, manual)
     end
   -- Fenced content with a filetype runs the pipeline `#{ft}`
   else
-    ---@cast node fence_node
+    ---@cast node FenceNode
     stage_name = "#" .. node.params.filetype
     value = node.content
   end
@@ -158,7 +147,7 @@ end
 -- Attempt to run pipelines on a list of nodes.
 -- The same semantics to `pipeline.pipe_nodes` applies, but over a table of nodes.
 --
----@param nodes node[] A node to run through a pipeline
+---@param nodes Node[] A node to run through a pipeline
 ---@param manual? boolean
 function pipeline.pipe_nodes(nodes, manual)
   for _, node in ipairs(nodes) do
