@@ -8,12 +8,7 @@ local buffer_tree = require "fence_preview.buffer_tree"
 local side_window = require "fence_preview.side_window"
 local pipeline = require "fence_preview.pipeline"
 
-if false then
-  sixel_extmarks = {} ---@diagnostic disable-line
-end
-
----@diagnostic disable-next-line
-fence_preview = {
+local fence_preview = {
   ---TODO
   pipeline = pipeline,
   buffer_tree = buffer_tree,
@@ -109,3 +104,5 @@ function fence_preview.bind()
   buffer_tree.prepare_new_buffer(current_buffer)
   buffer_tree.reload_buffer()
 end
+
+return fence_preview
