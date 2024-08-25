@@ -1,25 +1,36 @@
 fence-preview
 =============
 
-A plugin for previewing images from nvim.
+![Video example](./fence_preview_example.mp4)
+
+A plugin for previewing markdown content from nvim.
 Somewhat of a reimplementation of [vim-graphical-preview](https://github.com/bytesnake/vim-graphical-preview),
 which refused to compile on my Linux box.
 
 A sister project to [nvim-image-extmarks](https://github.com/queue-miscreant/nvim-image-extmarks),
 which it depends upon.
 
-Neovim 0.10 note: drawing images at virt_lines extmarks requires text_height.
-Use prior virt_lines implementation by default for those versions.
+To use the plugin in a buffer, run the following in Lua
+
+```lua
+require("fence_preview").bind()
+```
+
+If you want this to run automatically in new buffers, set up an autocommand to do it for you:
+
+```vim
+autocmd FileType markdown lua require("fence_preview").bind()
+```
 
 
 Requirements
 ------------
 
+- [nvim-image-extmarks](https://github.com/queue-miscreant/nvim-image-extmarks)
+  - Depending on whether `virt_lines` is permitted (i.e., Neovim 0.10 or greater), images can appear differently.
 - ImageMagick
 - LaTeX (optional)
 - gnuplot (optional)
-- Plugins
-    - [nvim-image-extmarks](https://github.com/queue-miscreant/nvim-image-extmarks)
 
 
 Installation
@@ -27,53 +38,27 @@ Installation
 
 ### Vundle
 
-<!--
 Place the following in `~/.config/nvim/init.vim`:
 ```vim
-Plugin '...', { 'do': ':UpdateRemotePlugins' }
+Plugin 'queue-miscreant/fence-preview'
 ```
 Make sure the file is sourced and run `:PluginInstall`.
--->
 
 
-Commands
---------
+Details
+-------
 
-Plugin commands
-
-
-Functions
----------
-
-Exposed functions
-
-
-Keys
-----
-
-Plugin keybinds
-
-
-Configuration
--------------
-
-Global variables
-
-
-Highlights
-----------
-
-Plugin highlights
+More details can be found in the included helpdoc.
+Run `:help fence-preview` for more information.
 
 
 TODOs
 -----
 
-- Refactor extmark manipulations into its own file
 - Cache files in persistent directory between sessions
-- Documentation
-- Only run pipeline when content changes
+- Refactor extmark manipulations into its own file for portability
+- Ensure pipelines are run only when content changes
 - Add ability to halt running pipelines
 - Better splits
     - Preambles for fence content (TeX for math so that syntax works properly, Python imports(?))
-- URL previews
+- Curl remote images
