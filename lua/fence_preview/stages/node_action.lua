@@ -26,7 +26,7 @@ function node_action.refold(node)
     fold_start = node.range[1]
   else
     local height = math.max(
-      node.params.height or (node.range[2] - node.range[1] + 1),
+      node.params and node.params.height or (node.range[2] - node.range[1] + 1),
       settings.minimum_inline_fence_height
     )
     -- Nothing to fold
@@ -90,8 +90,7 @@ function node_action.try_draw_extmark(args)
           -- Place the extmark right below the image
           start_line = node.range[1]
           height = settings.default_virtual_file_height
-        end
-        if node.params.height ~= nil then
+        elseif --[[ node.type == "fence" and ]] node.params.height ~= nil then
           height = node.params.height
         end
 
