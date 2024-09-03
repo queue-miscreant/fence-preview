@@ -12,8 +12,7 @@ local settings = {
     %s
     \begin{document}
     %s
-    \[
-    ]],
+    \[]],
     math_end = [[
     \]
     \end{document}

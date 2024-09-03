@@ -131,6 +131,7 @@ function latex.generate_dvi_from_latex(args, callback, error_callback)
       args.node:log(ret.stdout)
       args.node:log(ret.stderr)
       if
+        -- TODO: latex error codes are not reliable for detecting fatal errors
         ret.code ~= 0
       then
         -- LaTeX prints error to the stdout, if this is empty, then something is fundamentally
@@ -178,7 +179,7 @@ function latex.generate_svg_from_dvi(args, callback, error_callback)
 
   subprocess.spawn("dvisvgm",
     {
-      args ={ "--no-fonts", "--zoom=10.0", dvi_path.path },
+      args ={ "--no-fonts", "--zoom=2.5", dvi_path.path },
       stdio = { false, true, true },
       cwd = path.tempdir,
     },

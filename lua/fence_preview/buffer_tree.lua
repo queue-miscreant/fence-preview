@@ -15,6 +15,17 @@ local buffer_tree = {
   TEXT_NAMESPACE = vim.api.nvim_create_namespace("fence-preview-text"),
 }
 
+---@param buffer_data BufferData
+function buffer_tree._dump_image_extmarks(buffer_data)
+  vim.print(
+    vim.tbl_map(function(x) return {
+      node_id = (function() for n, e in pairs(buffer_data.node_id_to_extmarks) do if tostring(e.id) == tostring(x.id) then return n end end end)(),
+      height = x.height,
+      start_row = x.start_row
+    } end, sixel_extmarks.get(0, -1))
+  )
+end
+
 
 ---@param node Node
 ---@param cursor_line integer
@@ -75,35 +86,67 @@ local function remove_unused_extmarks(buffer_data)
     end
   end
 
-  local current_images = {}
+  local deleted_images = {}
   -- Remove image extmarks which are not in the above map
-  for _, extmark in pairs(sixel_extmarks.get(0, -1)) do
-    current_images[tostring(extmark.id)] = true
+  for _, extmark in ipairs(sixel_extmarks.get(0, -1)) do
     if sixel_extmark_ids[tostring(extmark.id)] == nil then
       sixel_extmarks.remove(extmark.id)
+      deleted_images[tostring(extmark.id)] = true
     end
   end
   -- Remove text extmarks which are not in the map
-  local current_text = {}
+  local deleted_text = {}
   local text_extmarks = vim.api.nvim_buf_get_extmarks(0, buffer_tree.TEXT_NAMESPACE, 0, -1, {})
-  for _, extmark in pairs(text_extmarks) do
+  for _, extmark in ipairs(text_extmarks) do
     -- id, row, column
     ---@cast extmark [integer, integer, integer]
-    current_text[tostring(extmark[1])] = true
     if text_extmark_ids[tostring(extmark[1])] == nil then
       vim.api.nvim_buf_del_extmark(0, buffer_tree.TEXT_NAMESPACE, extmark[1])
+      deleted_text[tostring(extmark[1])] = true
     end
   end
 
   -- Nodes no longer reference extmarks that do not exist
   for node_id, extmark in pairs(buffer_data.node_id_to_extmarks) do
     if
-      (extmark.type == "sixel" and not current_images[tostring(extmark.id)])
-      or (extmark.type == "text" and not current_text[tostring(extmark.id)])
+      (extmark.type == "sixel" and deleted_images[tostring(extmark.id)])
+      or (extmark.type == "text" and deleted_text[tostring(extmark.id)])
     then
       buffer_data.node_id_to_extmarks[tostring(node_id)] = nil
     end
   end
+end
+
+-- Compare old node data with new node data.
+-- Build a new `node_id_to_extmarks` table from new nodes with the same hashes as old ones.
+-- Nonmatching extmarks are deleted.
+--
+---@param nodes Node[]
+---@param buffer_data BufferData
+---@return {[string]: PipelineExtmark}
+local function reassign_extmarks(nodes, buffer_data)
+  local last_nodes = buffer_data.nodes or {}
+  ---@type {[string]: PipelineExtmark}
+  local new_mapping = {}
+
+  -- Compare the new nodes with the previous nodes
+  for _, prev_node in ipairs(last_nodes) do
+    local extmark = buffer_data.node_id_to_extmarks[tostring(prev_node.id)]
+    if extmark == nil then goto matched end
+    -- Find a new node with a matching hash to this old node
+    for _, node in ipairs(nodes) do
+      if compare_nodes(node, prev_node) then
+        new_mapping[tostring(node.id)] = buffer_data.node_id_to_extmarks[tostring(prev_node.id)]
+        goto matched
+      end
+    end
+    -- Node which no longer exists
+    buffer_tree.remove_extmark(extmark)
+
+    ::matched::
+  end
+
+  return new_mapping
 end
 
 
@@ -118,53 +161,27 @@ function buffer_tree.reload_buffer()
 
   local nodes = delimit.generate_nodes(current_lines, current_buffer)
 
-  local no_process = {}
+  -- Make the extmark map tables consistent
+  buffer_data.node_id_to_extmarks = reassign_extmarks(nodes, buffer_data)
+  buffer_data.nodes = nodes
+  remove_unused_extmarks(buffer_data)
+  -- TODO: only for inline extmarks
+  vim.wo.foldmethod = "manual"
 
-  if buffer_data.nodes == nil then
-    buffer_data.nodes = {}
-  end
-  local last_nodes = buffer_data.nodes
-
-  -- Compare the new nodes with the previous nodes
-  -- TODO this just needs to move stuff over, but we also need to `remove_unused`
-  -- Consider refactoring
-  for _, prev_node in pairs(last_nodes) do
-    local extmark = buffer_data.node_id_to_extmarks[tostring(prev_node.id)]
-    for _, node in pairs(nodes) do
-      if
-        extmark ~= nil and compare_nodes(node, prev_node)
-      then
-        no_process[tostring(node.id)] = true
-        goto matched
-      end
-    end
-    -- Node which no longer exists
-    if extmark ~= nil then
-      buffer_tree.remove_extmark(extmark)
-    end
-    buffer_data.node_id_to_extmarks[tostring(prev_node.id)] = nil
-
-    ::matched::
-  end
-
-  -- Add the node under the cursor to the no process list
+  -- Make note of the current node under the cursor
   vim.b.fence_preview_inside_node = nil
   local cursor_node = buffer_tree.node_at_line(vim.fn.line("."), nodes)
   if cursor_node ~= nil then
     vim.b.fence_preview_inside_node = cursor_node.id
-    no_process[tostring(cursor_node.id)] = true
   end
 
-  remove_unused_extmarks(buffer_data)
-  vim.wo.foldmethod = "manual"
-
-  buffer_data.nodes = nodes
   pipeline.pipe_nodes(
     vim.tbl_filter(
       ---@param node Node
       function(node)
         node.draw_number = vim.b.fence_preview_draw_number
-        return no_process[tostring(node.id)] == nil
+        return buffer_data.node_id_to_extmarks[tostring(node.id)] == nil
+          and node.id ~= vim.b.fence_preview_inside_node
       end,
       nodes
     )

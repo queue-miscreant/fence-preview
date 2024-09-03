@@ -7,6 +7,7 @@ require "fence_preview.stages"
 local buffer_tree = require "fence_preview.buffer_tree"
 local side_window = require "fence_preview.side_window"
 local pipeline = require "fence_preview.pipeline"
+local sixel_extmarks = require "sixel_extmarks"
 
 local fence_preview = {
   ---TODO
@@ -84,7 +85,10 @@ function fence_preview.bind()
   vim.api.nvim_buf_create_user_command(
     0,
     "FenceRefreshAll",
-    function() buffer_tree.reload_buffer() end,
+    function()
+      buffer_tree.reload_buffer()
+      sixel_extmarks.redraw()
+    end,
     {}
   )
 

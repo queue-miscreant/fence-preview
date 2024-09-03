@@ -57,7 +57,6 @@ TODOs
 
 - Cache files in persistent directory between sessions
 - Refactor extmark manipulations into its own file for portability
-- Ensure pipelines are run only when content changes
 - Add ability to halt running pipelines
 - Better splits
     - Preambles for fence content (TeX for math so that syntax works properly, Python imports(?))
