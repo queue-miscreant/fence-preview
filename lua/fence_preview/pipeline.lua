@@ -1,5 +1,6 @@
 local path = require "fence_preview.polyfill.path"
 local delimit = require "fence_preview.delimit"
+local settings = require "fence_preview.settings"
 
 local pipeline = {
   ---@type {[string]: Pipeline}
@@ -116,7 +117,10 @@ function pipeline.pipe_node(node, manual)
 
     stage_name = value.suffix
     -- Pipeline exists for suffix
-    if pipeline.runners[stage_name] == nil then
+    if
+      pipeline.runners[stage_name] == nil
+      and vim.tbl_contains(settings.preview_extensions, stage_name)
+    then
       stage_name = "display"
     end
   -- Fenced content with a filetype runs the pipeline `#{ft}`

@@ -3,6 +3,8 @@ local settings = {
   default_virtual_file_height = 10,
   maximum_text_lines = 3,
 
+  preview_extensions = { ".png", ".jpg", ".jpeg" },
+
   latex = {
     math_start = [[
     \documentclass[20pt, preview]{standalone}
