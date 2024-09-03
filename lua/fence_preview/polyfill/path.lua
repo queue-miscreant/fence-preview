@@ -12,8 +12,11 @@
 ---@field parent fun(path: Path): Path
 ---@field relative_to fun(path: Path): Path
 
+local temp = vim.fn.fnamemodify(vim.fn.tempname(), ":h:h") .. "/fence_preview"
+vim.fn.mkdir(temp, "p")
+
 local Path = {
-  tempdir = vim.fn.fnamemodify(vim.fn.tempname(), ":h")
+  tempdir = temp,
 }
 Path.__index = Path
 

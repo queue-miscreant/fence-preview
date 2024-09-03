@@ -55,7 +55,6 @@ Run `:help fence-preview` for more information.
 TODOs
 -----
 
-- Cache files in persistent directory between sessions
 - Refactor extmark manipulations into its own file for portability
 - Add ability to halt running pipelines
 - Better splits
