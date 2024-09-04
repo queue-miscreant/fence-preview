@@ -56,6 +56,7 @@ TODOs
 -----
 
 - Refactor extmark manipulations into its own file for portability
+- Saving while the cursor is in a fence (`vim.b.fence_preview_inside_node`) causes that fence to be refreshed
 - Add ability to halt running pipelines
 - Better splits
     - Preambles for fence content (TeX for math so that syntax works properly, Python imports(?))

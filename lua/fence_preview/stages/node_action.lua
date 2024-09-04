@@ -104,8 +104,13 @@ function node_action.try_draw_extmark(args)
           type = "sixel",
         }
       else
+        local start_line = node.range[1] - 1
+        if node.type == "file" then
+          start_line = start_line + 1
+        end
+
         local new_extmark_id = sixel_extmarks.create(
-          node.range[1] - 1,
+          start_line,
           node.range[2] - 1,
           image_path.path
         )

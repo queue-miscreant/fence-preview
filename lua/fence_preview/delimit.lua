@@ -74,7 +74,7 @@ local function cook_node(node, buffer_number)
     ret = {
       type = "file",
       filename = filename,
-      range = {node.start + 1, node.end_},
+      range = {node.start, node.end_},
       id = node.id,
       hash = vim.fn.sha256(filename),
       buffer = buffer_number,
