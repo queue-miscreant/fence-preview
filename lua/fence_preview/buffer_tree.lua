@@ -30,7 +30,7 @@ end
 ---@param node Node
 ---@param cursor_line integer
 ---@return boolean
-local function cursor_in_node(node, cursor_line)
+function buffer_tree.cursor_in_node(node, cursor_line)
   -- Cursor is inside this node
   return node.range[1] <= cursor_line and cursor_line < node.range[2]
 end
@@ -47,7 +47,7 @@ function buffer_tree.node_at_line(cursor_line, nodes)
   if nodes == nil then return nil end
 
   for _, node in ipairs(nodes) do
-    if cursor_in_node(node, cursor_line) then
+    if buffer_tree.cursor_in_node(node, cursor_line) then
       return node
     end
   end
@@ -188,14 +188,15 @@ function buffer_tree.reload_buffer()
   )
 end
 
-function buffer_tree.try_update_inside_node()
+function buffer_tree.try_update_inside_node(ignore_cursor)
   -- Do nothing if we did not hold off on processing a node due to cursor position
   if vim.b.fence_preview_inside_node == nil then return end
 
   -- We were in a node, so if the node under the cursor is the same one
   local current_node = buffer_tree.node_at_line(vim.fn.line("."))
   if
-    current_node ~= nil
+    not ignore_cursor
+    and current_node ~= nil
     and current_node.id == vim.b.fence_preview_inside_node
   then
     return

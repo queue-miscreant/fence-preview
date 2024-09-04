@@ -11,6 +11,9 @@ local node_action = {}
 function node_action.refold(node)
   if node.type == "file" then return end
 
+  -- Don't bother folding if the cursor is here
+  if buffer_tree.cursor_in_node(node, vim.fn.line(".")) then return end
+
   -- Delete all folds in the range
   -- The line given should always be folded by the below statements
   local saved = vim.fn.winsaveview()

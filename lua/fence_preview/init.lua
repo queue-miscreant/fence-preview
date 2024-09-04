@@ -61,11 +61,11 @@ function fence_preview.bind()
 
   -- Push content in fences if the cursor has moved out of the way
   vim.api.nvim_create_autocmd(
-    { "CursorMoved" },
+    { "CursorMoved", "BufWrite" },
     {
       group = "FencePreview",
       buffer = 0,
-      callback = function() buffer_tree.try_update_inside_node() end
+      callback = function(e) buffer_tree.try_update_inside_node(e.event ~= "CursorMoved") end
     }
   )
 
