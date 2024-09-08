@@ -1,6 +1,16 @@
 ---@class PipelineExtmark
 ---@field id integer
----@field type "sixel" | "text"
+---@field type string
+
+---@alias ExtmarkModuleAdd fun(node: Node, path: Path): integer
+---@alias ExtmarkModuleRemove fun(extmark_id: integer)
+---@alias ExtmarkModuleIterIDs fun(): (fun(): integer?, integer?)
+
+---@class ExtmarkModule
+---@field name string
+---@field add ExtmarkModuleAdd
+---@field remove ExtmarkModuleRemove
+---@field iter_ids ExtmarkModuleIterIDs
 
 ---@class BufferData
 ---@field nodes Node[]
@@ -34,6 +44,7 @@
 ---@field draw_number? integer
 ---@field logs string[]
 ---
+---@field is_line_inside? fun(self: Node, line: integer): boolean
 ---@field log? fun(self: FenceNode, ...: any)
 ---@field log_self? fun(self: FenceNode)
 ---@field clear_logs? fun(self: FenceNode)
@@ -48,6 +59,7 @@
 ---@field draw_number? integer
 ---@field logs string[]
 ---
+---@field is_line_inside? fun(self: Node, line: integer): boolean
 ---@field log? fun(self: FileNode, ...: any)
 ---@field log_self? fun(self: FileNode)
 ---@field clear_logs? fun(self: FileNode)

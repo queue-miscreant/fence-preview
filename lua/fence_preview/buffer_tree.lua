@@ -1,39 +1,17 @@
--- fence_preview.lua
+-- buffer_tree.lua
 --
--- Autocommands for building a list of processable content and asynchronously rendering
--- said content into extmarks.
+-- Functions for working with buffers recognized by the plugin.
+-- Mostly provides buffer-wide utilities, such as corresponding a position with a node.
 
 local delimit = require "fence_preview.delimit"
 local pipeline = require "fence_preview.pipeline"
-local sixel_extmarks = require "sixel_extmarks"
+local extmarks = require "fence_preview.extmarks"
 
 
 local buffer_tree = {
   ---@type {[string]: BufferData}
   buffers_to_data = {},
-  ---@type integer
-  TEXT_NAMESPACE = vim.api.nvim_create_namespace("fence-preview-text"),
 }
-
----@param buffer_data BufferData
-function buffer_tree._dump_image_extmarks(buffer_data)
-  vim.print(
-    vim.tbl_map(function(x) return {
-      node_id = (function() for n, e in pairs(buffer_data.node_id_to_extmarks) do if tostring(e.id) == tostring(x.id) then return n end end end)(),
-      height = x.height,
-      start_row = x.start_row
-    } end, sixel_extmarks.get(0, -1))
-  )
-end
-
-
----@param node Node
----@param cursor_line integer
----@return boolean
-function buffer_tree.cursor_in_node(node, cursor_line)
-  -- Cursor is inside this node
-  return node.range[1] <= cursor_line and cursor_line < node.range[2]
-end
 
 
 ---@param cursor_line integer
@@ -47,7 +25,7 @@ function buffer_tree.node_at_line(cursor_line, nodes)
   if nodes == nil then return nil end
 
   for _, node in ipairs(nodes) do
-    if buffer_tree.cursor_in_node(node, cursor_line) then
+    if node:is_line_inside(cursor_line) then
       return node
     end
   end
@@ -62,59 +40,6 @@ local function compare_nodes(node1, node2)
   return (
     node1.hash == node2.hash
   )
-end
-
----@param extmark PipelineExtmark
-function buffer_tree.remove_extmark(extmark)
-  if extmark.type == "sixel" then
-    sixel_extmarks.remove(extmark.id)
-  elseif extmark.type == "text" then
-    vim.api.nvim_buf_del_extmark(0, buffer_tree.TEXT_NAMESPACE, extmark.id)
-  end
-end
-
----@param buffer_data BufferData
-local function remove_unused_extmarks(buffer_data)
-  -- Find all extmarks which are in the current extmark map
-  local sixel_extmark_ids = {}
-  local text_extmark_ids = {}
-  for _, extmark in pairs(buffer_data.node_id_to_extmarks) do
-    if extmark.type == "sixel" then
-      sixel_extmark_ids[tostring(extmark.id)] = true
-    else
-      text_extmark_ids[tostring(extmark.id)] = true
-    end
-  end
-
-  local deleted_images = {}
-  -- Remove image extmarks which are not in the above map
-  for _, extmark in ipairs(sixel_extmarks.get(0, -1)) do
-    if sixel_extmark_ids[tostring(extmark.id)] == nil then
-      sixel_extmarks.remove(extmark.id)
-      deleted_images[tostring(extmark.id)] = true
-    end
-  end
-  -- Remove text extmarks which are not in the map
-  local deleted_text = {}
-  local text_extmarks = vim.api.nvim_buf_get_extmarks(0, buffer_tree.TEXT_NAMESPACE, 0, -1, {})
-  for _, extmark in ipairs(text_extmarks) do
-    -- id, row, column
-    ---@cast extmark [integer, integer, integer]
-    if text_extmark_ids[tostring(extmark[1])] == nil then
-      vim.api.nvim_buf_del_extmark(0, buffer_tree.TEXT_NAMESPACE, extmark[1])
-      deleted_text[tostring(extmark[1])] = true
-    end
-  end
-
-  -- Nodes no longer reference extmarks that do not exist
-  for node_id, extmark in pairs(buffer_data.node_id_to_extmarks) do
-    if
-      (extmark.type == "sixel" and deleted_images[tostring(extmark.id)])
-      or (extmark.type == "text" and deleted_text[tostring(extmark.id)])
-    then
-      buffer_data.node_id_to_extmarks[tostring(node_id)] = nil
-    end
-  end
 end
 
 -- Compare old node data with new node data.
@@ -141,7 +66,7 @@ local function reassign_extmarks(nodes, buffer_data)
       end
     end
     -- Node which no longer exists
-    buffer_tree.remove_extmark(extmark)
+    extmarks.remove_extmark(extmark)
 
     ::matched::
   end
@@ -164,7 +89,7 @@ function buffer_tree.reload_buffer()
   -- Make the extmark map tables consistent
   buffer_data.node_id_to_extmarks = reassign_extmarks(nodes, buffer_data)
   buffer_data.nodes = nodes
-  remove_unused_extmarks(buffer_data)
+  extmarks.remove_all_unused(buffer_data)
   -- TODO: only for inline extmarks
   vim.wo.foldmethod = "manual"
 

@@ -1,3 +1,9 @@
+-- pipeline.lua
+--
+-- Basic wrappers for pipeline functionality.
+-- Provides the ability to define pipelines from lists of stages and run them in
+-- synchronous and asynchronous fashions.
+
 local path = require "fence_preview.polyfill.path"
 local delimit = require "fence_preview.delimit"
 local settings = require "fence_preview.settings"
@@ -96,7 +102,9 @@ end
 
 -- Attempt to run pipelines on a node.
 -- File nodes attempt to find and run a pipeline based on the suffix of the path
--- (e.g., ".tex"). If no pipeline is found, it calls the "display" pipeline.
+-- (e.g., ".tex").
+-- If no pipeline is found and it belongs to `settings.preview_extensions`,
+-- it calls the "display" pipeline.
 --
 -- Fence nodes attempt to find and run a pipeline based on the filetype, preceded
 -- by a "#" (e.g., "#python"). If no pipeline exists, it will not be run.

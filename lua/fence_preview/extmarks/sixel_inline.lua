@@ -1,0 +1,85 @@
+-- extmarks/sixel_inline.lua
+--
+-- Inline sixel extmark provider.
+-- This is slightly-older `sixel_extmarks` functionality which renders
+-- images on top of buffer contents, rather than adding virtual lines.
+
+local sixel_extmarks = require "sixel_extmarks"
+local settings = require "fence_preview.settings"
+
+local sixel_inline = {
+  name = "sixel_inline"
+}
+
+-- Apply folds to a node if it has a preferred height.
+--
+---@param node Node
+local function refold(node)
+  if node.type == "file" then return end
+
+  -- Don't bother folding if the cursor is here
+  if node:is_line_inside(vim.fn.line(".")) then return end
+
+  -- Delete all folds in the range
+  -- The line given should always be folded by the below statements
+  local saved = vim.fn.winsaveview()
+  pcall(function()
+    vim.cmd(("normal %dGzD"):format(node.range[2] - 1))
+  end)
+  vim.fn.winrestview(saved)
+
+  -- TODO: modify vimwiki's suggested fold function to work with fences
+  -- Fold the entire content so that we can rely on the virtual lines
+  pcall(function()
+    vim.cmd(("%d,%dfold"):format(
+      node.range[1],
+      node.range[2] - 1
+    ))
+  end)
+end
+
+
+---@type ExtmarkModuleAdd
+function sixel_inline.add(node, path)
+  refold(node)
+
+  -- Place the extmark right after the fence
+  local start_line = node.range[2]
+  local height = node.range[2] - node.range[1] + 1
+  if node.type == "file" then
+    -- Place the extmark right below the image
+    start_line = node.range[1]
+    height = settings.default_virtual_file_height
+  elseif --[[ node.type == "fence" and ]] node.params.height ~= nil then
+    height = node.params.height
+  end
+
+  return sixel_extmarks.create_virtual(
+    start_line - 1,
+    height,
+    path.path
+  )
+end
+
+
+---@type ExtmarkModuleRemove
+function sixel_inline.remove(extmark_id)
+  sixel_extmarks.remove(extmark_id)
+end
+
+
+---@type ExtmarkModuleIterIDs
+function sixel_inline.iter_ids()
+  local all_sixel = sixel_extmarks.get(0, -1)
+  local i = 0
+  return function()
+    local current = all_sixel[i]
+    while current ~= nil do
+      i = i + 1
+      current = all_sixel[i]
+      if current.type == "inline" then return i, current end
+    end
+  end
+end
+
+return sixel_inline

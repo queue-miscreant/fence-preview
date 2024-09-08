@@ -55,7 +55,8 @@ Run `:help fence-preview` for more information.
 TODOs
 -----
 
-- Refactor extmark manipulations into its own file for portability
+- Move all `sixel_extmarks` dependencies into `fence_preview.extmarks`
+- Manual foldmethod only for "inline" sixels
 - Add ability to halt running pipelines
 - Better splits
     - Preambles for fence content (TeX for math so that syntax works properly, Python imports(?))

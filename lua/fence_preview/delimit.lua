@@ -111,6 +111,15 @@ function delimit.set_node_content(node, content)
   node.hash = vim.fn.sha256(vim.trim(table.concat(content, "\n")))
 end
 
+
+---@param self Node
+---@param line integer
+---@return boolean
+function node_metatable:is_line_inside(line)
+  -- Cursor is inside this node
+  return self.range[1] <= line and line < self.range[2]
+end
+
 ---@param self Node
 ---@param ... any
 function node_metatable:log(...)

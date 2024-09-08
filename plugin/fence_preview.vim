@@ -14,15 +14,17 @@ endif
 
 
 " Can use virtual extmarks instead of inline ones
-let g:fence_preview_use_virtual = get(
+let g:fence_preview_image_extmark_handler = get(
       \ g:,
-      \ "fence_preview_use_virtual",
-      \ 1)
+      \ "fence_preview_image_extmark_handler",
+      \ "sixel_virtual")
 if g:image_extmarks_allow_virtual == 0
-  let g:fence_preview_use_virtual = 0
+  let g:fence_preview_image_extmark_handler = 
+      \ "sixel_inline"
 end
 
 hi default link FencePreviewText Comment
+hi default link FencePreviewPath FencePreviewText
 hi default link FencePreviewError ErrorMsg
 
 " let g:image_extmarks_slow_insert = 1

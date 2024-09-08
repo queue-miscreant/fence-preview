@@ -1,4 +1,4 @@
--- fence_preview.lua
+-- init.lua
 --
 -- Autocommands for building a list of processable content and asynchronously rendering
 -- said content into extmarks.
@@ -7,6 +7,7 @@ require "fence_preview.stages"
 local buffer_tree = require "fence_preview.buffer_tree"
 local side_window = require "fence_preview.side_window"
 local pipeline = require "fence_preview.pipeline"
+local extmarks = require "fence_preview.extmarks"
 local settings = require "fence_preview.settings"
 local sixel_extmarks = require "sixel_extmarks"
 
@@ -14,6 +15,7 @@ local fence_preview = {
   ---TODO
   pipeline = pipeline,
   buffer_tree = buffer_tree,
+  extmarks = extmarks,
   settings = settings,
 }
 
