@@ -4,7 +4,6 @@
 -- It would be nice to support other image plugins in the future, so abstracting
 -- this functionality here makes it easier for the plugin to work generally elsewhere.
 
-local sixel_extmarks = require "sixel_extmarks"
 local Path = require "fence_preview.polyfill.path"
 local text_extmark = require "fence_preview.extmarks.text"
 
@@ -13,7 +12,7 @@ local extmarks = {
   image_handlers = {
     text = text_extmark,
     sixel_inline = require "fence_preview.extmarks.sixel_inline",
-    sixel_virtual = require "fence_preview.extmarks.sixel_virtual"
+    sixel_virtual = require "fence_preview.extmarks.sixel_virtual",
   }
 }
 
@@ -25,21 +24,34 @@ local extmarks = {
 --      The name of the module. Used to keep track of how an extmark was added.
 --
 -- add(node: Node, path: Path): integer
---      A function for adding an extmark.
+--      A function for adding an extmark to the current buffer.
 --      Should return a unique integer for this module.
 --
 -- remove(extmark_id: integer)
---      A function for removing an extmark.
+--      A function for removing an extmark from the current buffer.
 --      `extmark_id` is the same value as returned by `add()`
 --
 -- iter_ids(): (fun(): integer?, integer?)
---      A function for retrieving all extmarks it is possible to `add()`
+--      A function for retrieving all extmarks that have been `add()`ed
 --      The second return value of the inner function is the same value as returned by `add()`
 --      In other words, the following code must be valid:
 --      ```
 --        for _, extmark_id in module.iter_ids() do ... end
 --      ```
 --      Simply returning `pairs` or `ipairs` over a table will also work.
+--
+-- Optionally, they can also include:
+--
+-- redraw(force?: boolean)
+--      A function to redraw all visible images.
+--
+-- dump(extmark_id_to_node: {[string]: Node})
+--      A function to log info about all known extmarks in the current buffer.
+--      This is separate from `iter_ids` so that the plugin only needs to be concerned
+--      with IDs, but additional information can be retrieved by developers.
+--
+--      A table mapping extmark IDs known by the plugin to their respective node is
+--      passed as an argument.
 --
 ---@param module ExtmarkModule
 function extmarks.install_image_handler(module)
@@ -50,20 +62,8 @@ function extmarks.install_image_handler(module)
   extmarks.image_handlers[module.name] = module
 end
 
--- TODO: move info dumps
----@param buffer_data BufferData
-function extmarks._dump_image_extmarks(buffer_data)
-  vim.print(
-    vim.tbl_map(function(x) return {
-      node_id = (function() for n, e in pairs(buffer_data.node_id_to_extmarks) do if tostring(e.id) == tostring(x.id) then return n end end end)(),
-      height = x.height,
-      start_row = x.start_row
-    } end, sixel_extmarks.get(0, -1))
-  )
-end
 
-
--- Generically remove an extmark using the method provided by its module.
+-- Generically remove an extmark from the current buffer using the method provided by its module.
 --
 ---@param extmark PipelineExtmark
 function extmarks.remove_extmark(extmark)
@@ -73,23 +73,36 @@ function extmarks.remove_extmark(extmark)
 end
 
 
+-- Sort extmarks in a buffer by type (i.e., the module that added them)
+-- Each entry of the returned table is a reverse-lookup of `extmark_id_to_node`,
+-- which has indexed into `nodes`
+--
+---@param buffer_data BufferData
+---@return {[string]: {[string]: Node}}
+local function get_extmarks_by_type(buffer_data)
+  ---@type {[string]: {[string]: Node}}
+  local ret = {}
+  for node_id, extmark in pairs(buffer_data.node_id_to_extmarks) do
+    local extmark_type = ret[extmark.type]
+    if extmark_type == nil then
+      extmark_type = {}
+      ret[extmark.type] = extmark_type
+    end
+
+    extmark_type[tostring(extmark.id)] = buffer_data.nodes[tonumber(node_id)]
+  end
+
+  return ret
+end
+
+
 -- Clean up all extmarks added to the current buffer, but have been
 -- desynced from the buffer contents.
 --
 ---@param buffer_data BufferData
 function extmarks.remove_all_unused(buffer_data)
   -- Sort extmarks by type
-  ---@type {[string]: {[string]: boolean}}
-  local extmarks_by_type = {}
-  for _, extmark in pairs(buffer_data.node_id_to_extmarks) do
-    local extmark_type = extmarks_by_type[extmark.type]
-    if extmark_type == nil then
-      extmark_type = {}
-      extmarks_by_type[extmark.type] = extmark_type
-    end
-
-    extmark_type[tostring(extmark.id)] = true
-  end
+  local extmarks_by_type = get_extmarks_by_type(buffer_data)
 
   -- For each extmark module...
   for module_name, current_extmarks in pairs(extmarks_by_type) do
@@ -165,9 +178,45 @@ function extmarks.add_image(buffer_data, node, path)
 end
 
 
+-- Redraw all image extmarks according to the given buffer data.
+--
+---@param buffer_data BufferData
+---@param force? boolean
+function extmarks.redraw_all(buffer_data, force)
+  local extmarks_by_type = get_extmarks_by_type(buffer_data)
+  for module_name, _ in pairs(extmarks_by_type) do
+    -- Find module and redraw
+    module = extmarks.image_handlers[module_name]
+    if module ~= nil and module.redraw ~= nil then
+      module.redraw(force)
+    end
+  end
+end
+
+
+-- Dump data for all extmarks in the buffer, according to their type.
+--
+---@param buffer_data BufferData
+---@param extmark_type? string
+function extmarks.dump_all(buffer_data, extmark_type)
+  local extmarks_by_type = get_extmarks_by_type(buffer_data)
+
+  for module_name, extmark_id_to_node in pairs(extmarks_by_type) do
+    -- Ignore module if filter parameter given
+    if extmark_type == nil or module_name:find(extmark_type) then
+      -- Find module and dump
+      module = extmarks.image_handlers[module_name]
+      if module ~= nil and module.dump ~= nil then
+        module.dump(extmark_id_to_node)
+      end
+    end
+  end
+end
+
+
 -- Add a text extmark using a given highlight.
 --
----@buffer_data BufferData
+---@param buffer_data BufferData
 ---@param node Node
 ---@param message any
 ---@param highlight string
@@ -180,8 +229,8 @@ function extmarks.add_text_generic(buffer_data, node, message, highlight)
     type = text_extmark.name,
   }
 
-  -- XXX: Workaround for images not being able to tell when `virt_lines` are added
-  sixel_extmarks.redraw()
+  -- Contingency for extmarks being shifted around by virtual text
+  extmarks.redraw_all(buffer_data)
 end
 
 

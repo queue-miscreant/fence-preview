@@ -9,7 +9,6 @@ local side_window = require "fence_preview.side_window"
 local pipeline = require "fence_preview.pipeline"
 local extmarks = require "fence_preview.extmarks"
 local settings = require "fence_preview.settings"
-local sixel_extmarks = require "sixel_extmarks"
 
 local fence_preview = {
   ---TODO
@@ -91,7 +90,9 @@ function fence_preview.bind()
     "FenceRefreshAll",
     function()
       buffer_tree.reload_buffer()
-      sixel_extmarks.redraw()
+      local current_buffer_ = vim.api.nvim_get_current_buf()
+      local buffer_data = buffer_tree.buffers_to_data[tostring(current_buffer_)]
+      if buffer_data ~= nil then extmarks.redraw_all(buffer_data) end
     end,
     {}
   )

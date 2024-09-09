@@ -82,4 +82,22 @@ function sixel_inline.iter_ids()
   end
 end
 
+
+---@type ExtmarkModuleRedraw
+function sixel_inline.redraw(force)
+  sixel_extmarks.redraw(force)
+end
+
+
+---@type ExtmarkModuleDump
+function sixel_inline.dump(extmark_id_to_node)
+  vim.print(
+    vim.tbl_map(function(x) return {
+      node_id = (extmark_id_to_node[x.id] or {}).id,
+      height = x.height,
+      start_row = x.start_row
+    } end, sixel_extmarks.get(0, -1))
+  )
+end
+
 return sixel_inline
