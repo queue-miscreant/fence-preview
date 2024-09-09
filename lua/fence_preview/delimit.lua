@@ -121,6 +121,14 @@ function node_metatable:is_line_inside(line)
 end
 
 ---@param self Node
+---@param other Node
+---@return boolean
+function node_metatable:equals(other)
+  -- Nodes have the same content
+  return self.hash == other.hash
+end
+
+---@param self Node
 ---@param ... any
 function node_metatable:log(...)
   local args = { ... }

@@ -4,6 +4,7 @@
 -- said content into extmarks.
 
 require "fence_preview.stages"
+local buffers = require "fence_preview.buffers"
 local buffer_tree = require "fence_preview.buffer_tree"
 local side_window = require "fence_preview.side_window"
 local pipeline = require "fence_preview.pipeline"
@@ -110,7 +111,7 @@ function fence_preview.bind()
     {}
   )
 
-  buffer_tree.prepare_new_buffer(current_buffer)
+  buffers.prepare_new(current_buffer)
   buffer_tree.reload_buffer()
 end
 

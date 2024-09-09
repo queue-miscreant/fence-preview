@@ -49,6 +49,7 @@
 ---@field logs string[]
 ---
 ---@field is_line_inside? fun(self: Node, line: integer): boolean
+---@field equals? fun(self: Node, other: Node): boolean
 ---@field log? fun(self: FenceNode, ...: any)
 ---@field log_self? fun(self: FenceNode)
 ---@field clear_logs? fun(self: FenceNode)
@@ -64,6 +65,7 @@
 ---@field logs string[]
 ---
 ---@field is_line_inside? fun(self: Node, line: integer): boolean
+---@field equals? fun(self: Node, other: Node): boolean
 ---@field log? fun(self: FileNode, ...: any)
 ---@field log_self? fun(self: FileNode)
 ---@field clear_logs? fun(self: FileNode)

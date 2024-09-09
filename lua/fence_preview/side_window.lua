@@ -3,7 +3,7 @@
 -- Functions for opening up a split for editing fence content, while previewing
 -- the result in the main buffer.
 
-local buffer_tree = require "fence_preview.buffer_tree"
+local buffers = require "fence_preview.buffers"
 local delimit = require "fence_preview.delimit"
 local pipeline = require "fence_preview.pipeline"
 
@@ -72,7 +72,7 @@ function side_window.enter_window(node)
 
         -- Retrieve tree from buffer
         ---@type BufferData
-        local buffer_data = buffer_tree.buffers_to_data[tostring(current_buffer)]
+        local buffer_data = buffers.buffers_to_data[tostring(current_buffer)]
         if buffer_data == nil then return end
 
         local last_nodes = buffer_data.nodes
