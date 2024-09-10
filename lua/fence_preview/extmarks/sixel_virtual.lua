@@ -29,22 +29,16 @@ local function refold(node)
   end)
   vim.fn.winrestview(saved)
 
-  local height = math.max(
-    node.params and node.params.height or (node.range[2] - node.range[1] + 1),
-    settings.minimum_inline_fence_height
-  )
-  -- Nothing to fold
-  if height >= node.range[2] - node.range[1] + 1 then
-    return
-  end
-
+  -- TODO: modify vimwiki's suggested fold function to work with fences
+  -- Fold the entire content so that we can rely on the virtual lines
   pcall(function()
     vim.cmd(("%d,%dfold"):format(
-      node.range[1] + height - 1 - 1,
+      node.range[1],
       node.range[2] - 1
     ))
   end)
 end
+
 
 ---@type ExtmarkModuleAdd
 function sixel_virtual.add(node, path)

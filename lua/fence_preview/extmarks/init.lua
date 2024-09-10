@@ -156,7 +156,7 @@ function extmarks._add_image(buffer_data, node, path)
 end
 
 
--- Add a text extmark using the currently loaded image handler.
+-- Add a text extmark to the current buffer using the currently selected image handler.
 -- The current handler is specified in `g:fence_preview_image_extmark_handler`.
 --
 ---@param node Node
