@@ -5,7 +5,7 @@
 
 require "fence_preview.stages"
 local buffers = require "fence_preview.buffers"
-local buffer_tree = require "fence_preview.buffer_tree"
+local update = require "fence_preview.update"
 local side_window = require "fence_preview.side_window"
 local pipeline = require "fence_preview.pipeline"
 local extmarks = require "fence_preview.extmarks"
@@ -14,7 +14,8 @@ local settings = require "fence_preview.settings"
 local fence_preview = {
   ---TODO
   pipeline = pipeline,
-  buffer_tree = buffer_tree,
+  buffers = buffers,
+  update = update,
   extmarks = extmarks,
   settings = settings,
 }
@@ -31,7 +32,7 @@ function fence_preview.show_logs()
     function(node)
       vim.list_extend(logs, node.logs)
     end,
-    buffer_tree.buffers_to_data[tostring(current_buffer)].nodes
+    buffers.buffers_to_data[tostring(current_buffer)].nodes
   )
   vim.api.nvim_buf_set_lines(new_buffer, 0, -1, 0, logs)
   vim.api.nvim_open_win(new_buffer, true, {
@@ -57,7 +58,7 @@ function fence_preview.bind()
     {
       group = "FencePreview",
       buffer = 0,
-      callback = function() buffer_tree.reload_buffer() end
+      callback = function() update.current_window() end
     }
   )
 
@@ -67,7 +68,7 @@ function fence_preview.bind()
     {
       group = "FencePreview",
       buffer = 0,
-      callback = function(e) buffer_tree.try_update_inside_node(e.event ~= "CursorMoved") end
+      callback = function(e) update.try_inside_node(e.event ~= "CursorMoved") end
     }
   )
 
@@ -77,7 +78,7 @@ function fence_preview.bind()
     function()
       if vim.fn.mode():sub(1, 1) ~= "n" then return end
 
-      local node = buffer_tree.node_at_line(vim.fn.line("."))
+      local node = buffers.node_at_line(vim.fn.line("."))
       if node == nil then return end
       if node.type == "file" then return end
 
@@ -90,10 +91,8 @@ function fence_preview.bind()
     0,
     "FenceRefreshAll",
     function()
-      buffer_tree.reload_buffer()
-      local current_buffer_ = vim.api.nvim_get_current_buf()
-      local buffer_data = buffer_tree.buffers_to_data[tostring(current_buffer_)]
-      if buffer_data ~= nil then extmarks.redraw_all(buffer_data) end
+      update.current_window()
+      extmarks.redraw_all()
     end,
     {}
   )
@@ -102,7 +101,7 @@ function fence_preview.bind()
     0,
     "FenceRefresh",
     function()
-      local node = buffer_tree.node_at_line(vim.fn.line("."))
+      local node = buffers.node_at_line(vim.fn.line("."))
       if node == nil then return end
       if node.type == "file" then return end
 
@@ -112,7 +111,7 @@ function fence_preview.bind()
   )
 
   buffers.prepare_new(current_buffer)
-  buffer_tree.reload_buffer()
+  update.current_window()
 end
 
 return fence_preview

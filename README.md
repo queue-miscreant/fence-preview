@@ -55,8 +55,6 @@ Run `:help fence-preview` for more information.
 TODOs
 -----
 
-- Fix import order so `extmarks` functions can be called without buffer_data
-  - Possibly refactor parts of `buffer_tree`
 - Manual foldmethod only for "inline" sixels
 - Add ability to halt running pipelines
 - Better splits

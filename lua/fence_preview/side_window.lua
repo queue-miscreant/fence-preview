@@ -42,7 +42,7 @@ function side_window.enter_window(node)
     callback = function()
       local num_lines = vim.fn.line("$")
 
-      -- TODO: move some of this to buffer_tree
+      -- TODO: move some of this to update.lua
       vim.api.nvim_buf_call(current_buffer, function ()
         delimit.set_node_content(node, vim.api.nvim_buf_get_lines(new_buffer, 0, -1, 0))
         vim.api.nvim_buf_set_lines(
