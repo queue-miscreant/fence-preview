@@ -11,7 +11,7 @@ local extmarks = require "fence_preview.extmarks"
 local update = {}
 
 
-function update.current_window()
+function update.current_buffer()
   vim.b.fence_preview_draw_number = (vim.b.fence_preview_draw_number or 0) + 1
   ---@type integer
   local current_buffer = vim.api.nvim_get_current_buf()
@@ -23,13 +23,6 @@ function update.current_window()
   -- Make the extmark map tables consistent
   local buffer_data = extmarks.reassign_current_buffer(nodes)
   if buffer_data == nil then return end
-  -- TODO: Only use manual folds for inline extmarks
-  if
-    vim.g.fence_preview_image_extmark_handler == "sixel_inline"
-    or vim.g.fence_preview_image_extmark_handler == "sixel_virtual"
-  then
-    vim.wo.foldmethod = "manual"
-  end
 
   -- Make note of the current node under the cursor
   vim.b.fence_preview_inside_node = nil
@@ -69,13 +62,6 @@ function update.try_inside_node(ignore_cursor)
   local buffer_data = buffers.buffers_to_data[tostring(current_buffer)]
   if buffer_data == nil then return end
 
-  -- TODO: see above
-  if
-    vim.g.fence_preview_image_extmark_handler == "sixel_inline"
-    or vim.g.fence_preview_image_extmark_handler == "sixel_virtual"
-  then
-    vim.wo.foldmethod = "manual"
-  end
   pipeline.pipe_nodes(
     vim.tbl_filter(
       ---@param node Node

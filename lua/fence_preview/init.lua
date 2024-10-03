@@ -22,6 +22,16 @@ local fence_preview = {
 
 vim.api.nvim_create_augroup("FencePreview", { clear = false })
 
+local function set_current_window_options()
+  -- TODO: Only use manual folds for inline extmarks
+  if
+    vim.g.fence_preview_image_extmark_handler == "sixel_inline"
+    or vim.g.fence_preview_image_extmark_handler == "sixel_virtual"
+  then
+    vim.wo.foldmethod = "manual"
+  end
+end
+
 
 function fence_preview.show_logs()
   local new_buffer = vim.api.nvim_create_buf(0, 1)
@@ -58,7 +68,7 @@ function fence_preview.bind()
     {
       group = "FencePreview",
       buffer = 0,
-      callback = function() update.current_window() end
+      callback = function() update.current_buffer() end
     }
   )
 
@@ -69,6 +79,19 @@ function fence_preview.bind()
       group = "FencePreview",
       buffer = 0,
       callback = function(e) update.try_inside_node(e.event ~= "CursorMoved") end
+    }
+  )
+
+  -- Set window-local options
+  vim.api.nvim_create_autocmd(
+    { "WinEnter" },
+    {
+      group = "FencePreview",
+      buffer = 0,
+      callback = function(e)
+        if buffers[tostring(e.buffer)] == nil then return end
+        set_current_window_options()
+      end
     }
   )
 
@@ -91,7 +114,7 @@ function fence_preview.bind()
     0,
     "FenceRefreshAll",
     function()
-      update.current_window()
+      update.current_buffer()
       extmarks.redraw_all()
     end,
     {}
@@ -111,7 +134,8 @@ function fence_preview.bind()
   )
 
   buffers.prepare_new(current_buffer)
-  update.current_window()
+  update.current_buffer()
+  set_current_window_options()
 end
 
 return fence_preview

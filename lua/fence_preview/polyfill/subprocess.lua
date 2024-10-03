@@ -11,6 +11,7 @@ local subprocess = {
 ---@class UVPipe
 ---@field write fun(self: UVPipe, input: string|string[], callback?: fun(err: string|nil))
 ---@field read_start fun(self: UVPipe, callback: fun(err: string|nil, data: string|nil))
+---@field close fun(self: UVPipe)
 ---@field shutdown fun(self: UVPipe, callback?: fun())
 
 ---@class SubprocessReturn
@@ -56,12 +57,14 @@ function subprocess.spawn(process, params, callback, callback_timeout)
     params,
     function(code, signal)
       if stdin then stdin:shutdown() end
+      if stdout then stdout:close() end
+      if stderr then stderr:close() end
       finished = true
-      callback{
+      callback {
         code = code,
         signal = signal,
         stdout = table.concat(stdout_content, ""),
-        stderr = table.concat(stderr_content, "")
+        stderr = table.concat(stderr_content, ""),
       }
     end
   )
@@ -69,7 +72,7 @@ function subprocess.spawn(process, params, callback, callback_timeout)
   if stdout ~= nil then
     stdout:read_start(function(err, data)
       assert(not err, err)
-      if data ~= nil then table.insert(stdout_content, data) end
+      if data == nil then table.insert(stdout_content, data) end
     end)
   end
 
