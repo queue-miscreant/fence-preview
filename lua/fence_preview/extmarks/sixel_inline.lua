@@ -4,7 +4,14 @@
 -- This is slightly-older `sixel_extmarks` functionality which renders
 -- images on top of buffer contents, rather than adding virtual lines.
 
-local sixel_extmarks = require "sixel_extmarks"
+local loaded, sixel_extmarks = pcall(function() return require "sixel_extmarks" end)
+if not loaded then
+  vim.notify(
+    "fence_preview: Missing dependency nvim_image_extmarks",
+    vim.log.levels.ERROR
+  )
+  return {}
+end
 local config = require "fence_preview.config"
 
 local sixel_inline = {

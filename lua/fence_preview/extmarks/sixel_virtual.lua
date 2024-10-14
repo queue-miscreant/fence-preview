@@ -4,7 +4,14 @@
 -- Newer `sixel_extmarks` functionality for Neovim >= 0.10
 -- Images render "inside" virtual lines added to the buffer
 
-local sixel_extmarks = require "sixel_extmarks"
+local loaded, sixel_extmarks = pcall(function() return require "sixel_extmarks" end)
+if not loaded then
+  vim.notify(
+    "fence_preview: Missing dependency nvim_image_extmarks",
+    vim.log.levels.ERROR
+  )
+  return {}
+end
 local config = require "fence_preview.config"
 
 local sixel_virtual = {

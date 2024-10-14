@@ -51,17 +51,9 @@ end
 ---@param range [integer, integer] The range of the node this message belongs to
 ---@param message any The message to render as an extmark
 ---@param highlight string The highlight to use within the extmark
----@return virt_text_args|virt_lines_args, integer
+---@return VirtTextArgs|VirtLinesArgs, integer
 local function message_to_extmark(range, message, highlight)
-  ---@alias hlpair [string, string]
-  ---@class virt_text_args
-  ---@field virt_text hlpair[]
-  ---@field virt_text_pos string
-
-  ---@class virt_lines_args
-  ---@field virt_lines hlpair[][]
-
-  ---@type virt_text_args|virt_lines_args
+  ---@type VirtTextArgs|VirtLinesArgs
   local extmark_args
   local start_line = range[1]
   if type(message) == "table" then
@@ -76,19 +68,19 @@ local function message_to_extmark(range, message, highlight)
         extmark_args = {
           virt_lines = vim.tbl_map(
             function(line)
-              ---@type hlpair[]
+              ---@type HLPair[]
               return {{ tostring(line), highlight }}
             end,
             trim_to_line_count(message, config.maximum_text_lines)
           )
-        }
+        } --[[@as VirtLinesArgs]]
       end
     else
       start_line = range[2]
       extmark_args = {
         virt_lines = vim.tbl_map(
           function(line)
-            ---@type hlpair[]
+            ---@type HLPair[]
             return {{ tostring(line), highlight }}
           end,
           trim_to_line_count(
@@ -96,7 +88,7 @@ local function message_to_extmark(range, message, highlight)
             config.maximum_text_lines
           )
         )
-      }
+      } --[[@as VirtLinesArgs]]
     end
   else
     extmark_args = {
