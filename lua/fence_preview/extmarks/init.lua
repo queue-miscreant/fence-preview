@@ -6,6 +6,7 @@
 
 local Path = require "fence_preview.polyfill.path"
 local buffers = require "fence_preview.buffers"
+local config = require "fence_preview.config"
 local text_extmark = require "fence_preview.extmarks.text"
 
 local extmarks = {
@@ -128,7 +129,7 @@ function extmarks._add_image(buffer_data, node, path)
   remove_existing(buffer_data, node.id)
 
   -- Get currently-loaded module
-  local handler = vim.g.fence_preview_image_extmark_handler
+  local handler = config.image_extmark_handler
   local module = extmarks.image_handlers[handler]
   if module == nil then
     return extmarks._add_error(buffer_data, node, "No extmark module found")

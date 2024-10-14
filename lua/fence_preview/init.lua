@@ -25,8 +25,8 @@ vim.api.nvim_create_augroup("FencePreview", { clear = false })
 local function set_current_window_options()
   -- TODO: Only use manual folds for inline extmarks
   if
-    vim.g.fence_preview_image_extmark_handler == "sixel_inline"
-    or vim.g.fence_preview_image_extmark_handler == "sixel_virtual"
+    config.image_extmark_handler == "sixel_inline"
+    or config.image_extmark_handler == "sixel_virtual"
   then
     vim.wo.foldmethod = "manual"
   end
@@ -42,7 +42,7 @@ function fence_preview.show_logs()
     function(node)
       vim.list_extend(logs, node.logs)
     end,
-    buffers.buffers_to_data[tostring(current_buffer)].nodes
+    (buffers.buffers_to_data[tostring(current_buffer)] or {}).nodes or {}
   )
   vim.api.nvim_buf_set_lines(new_buffer, 0, -1, 0, logs)
   vim.api.nvim_open_win(new_buffer, true, {

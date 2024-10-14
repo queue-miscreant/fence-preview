@@ -14,11 +14,7 @@ local latex_math_end = [[
 
 local default_config = {
   -- Can use virtual extmarks instead of inline ones
-  image_extmark_handler = (
-    vim.g.image_extmarks_allow_virtual == 0
-      and "sixel_virtual"
-      or "sixel_inline"
-  ),
+  image_extmark_handler = "sixel_virtual",
 
   minimum_inline_fence_height = 3,
   default_virtual_file_height = 10,
@@ -52,6 +48,13 @@ function config.load_globals(opts)
     if config[option] == nil then
       config[option] = default_value
     end
+  end
+
+  -- Set the handler for inline extmarks if we don't allow virtual ones
+  local err, image_extmarks = pcall(function() return require("sixel_extmarks") end)
+
+  if err or not image_extmarks.config.allow_virtual then
+    config.image_extmark_handler = "sixel_inline"
   end
 end
 
