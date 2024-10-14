@@ -36,6 +36,19 @@ Requirements
 Installation
 ------------
 
+### lazy.nvim
+
+Use the following LazySpec:
+
+```lua
+{
+  "queue-miscreant/fence-preview",
+  opts = {
+    -- Configuration options go here
+  },
+}
+```
+
 ### Vundle
 
 Place the following in `~/.config/nvim/init.vim`:

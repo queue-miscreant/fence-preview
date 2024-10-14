@@ -9,7 +9,7 @@ local update = require "fence_preview.update"
 local side_window = require "fence_preview.side_window"
 local pipeline = require "fence_preview.pipeline"
 local extmarks = require "fence_preview.extmarks"
-local settings = require "fence_preview.settings"
+local config = require "fence_preview.config"
 
 local fence_preview = {
   ---TODO
@@ -17,7 +17,7 @@ local fence_preview = {
   buffers = buffers,
   update = update,
   extmarks = extmarks,
-  settings = settings,
+  config = config,
 }
 
 vim.api.nvim_create_augroup("FencePreview", { clear = false })
@@ -139,6 +139,7 @@ function fence_preview.bind()
 end
 
 function fence_preview.setup(opts)
+  config.load_globals(opts)
 end
 
 return fence_preview
