@@ -1,4 +1,4 @@
-local settings = {
+local config = {
   minimum_inline_fence_height = 3,
   default_virtual_file_height = 10,
   maximum_text_lines = 3,
@@ -26,4 +26,4 @@ local settings = {
   }
 }
 
-return settings
+return config

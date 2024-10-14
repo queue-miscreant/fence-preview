@@ -138,4 +138,7 @@ function fence_preview.bind()
   set_current_window_options()
 end
 
+function fence_preview.setup(opts)
+end
+
 return fence_preview

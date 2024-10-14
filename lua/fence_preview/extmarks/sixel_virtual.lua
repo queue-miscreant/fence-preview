@@ -5,7 +5,7 @@
 -- Images render "inside" virtual lines added to the buffer
 
 local sixel_extmarks = require "sixel_extmarks"
-local settings = require "fence_preview.settings"
+local config = require "fence_preview.config"
 
 local sixel_virtual = {
   name = "sixel_virtual"
@@ -50,7 +50,7 @@ function sixel_virtual.add(node, path)
   if node.type == "file" then
     -- Place the extmark right below the image
     start_line = node.range[1]
-    height = settings.default_virtual_file_height
+    height = config.default_virtual_file_height
   elseif --[[ node.type == "fence" and ]] node.params.height ~= nil then
     height = node.params.height
   end

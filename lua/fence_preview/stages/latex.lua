@@ -1,4 +1,4 @@
-local settings = require "fence_preview.settings"
+local config = require "fence_preview.config"
 local subprocess = require "fence_preview.polyfill.subprocess"
 local path = require "fence_preview.polyfill.path"
 
@@ -16,24 +16,24 @@ function latex.add_math_preamble(args)
   local extra_packages = table.concat(
     vim.tbl_map(
       function(package) return ("\\usepackage{%s}"):format(package) end,
-      settings.latex.extra_packages
+      config.latex.extra_packages
     ),
     "\n"
   )
-  local extra_preamble = extra_packages .. "\n" .. settings.latex.extra_preamble
+  local extra_preamble = extra_packages .. "\n" .. config.latex.extra_preamble
 
   -- Background color based on current `background` option
-  local background = settings.latex.force_mode == "" and vim.o.background or settings.latex.force_mode
-  local extra_document = settings.latex.extra_document
+  local background = config.latex.force_mode == "" and vim.o.background or config.latex.force_mode
+  local extra_document = config.latex.extra_document
   if background == "dark" then
     extra_document = DARK_COLORS
   end
 
   local ret = {
-    settings.latex.math_start:format(extra_preamble, extra_document),
+    config.latex.math_start:format(extra_preamble, extra_document),
     unpack(args.previous), ---@diagnostic disable-line
   }
-  table.insert(ret, settings.latex.math_end)
+  table.insert(ret, config.latex.math_end)
   return ret
 end
 

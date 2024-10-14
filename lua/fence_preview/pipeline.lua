@@ -6,7 +6,7 @@
 
 local path = require "fence_preview.polyfill.path"
 local delimit = require "fence_preview.delimit"
-local settings = require "fence_preview.settings"
+local config = require "fence_preview.config"
 
 local pipeline = {
   ---@type {[string]: Pipeline}
@@ -103,7 +103,7 @@ end
 -- Attempt to run pipelines on a node.
 -- File nodes attempt to find and run a pipeline based on the suffix of the path
 -- (e.g., ".tex").
--- If no pipeline is found and it belongs to `settings.preview_extensions`,
+-- If no pipeline is found and it belongs to `config.preview_extensions`,
 -- it calls the "display" pipeline.
 --
 -- Fence nodes attempt to find and run a pipeline based on the filetype, preceded
@@ -127,7 +127,7 @@ function pipeline.pipe_node(node, manual)
     -- Pipeline exists for suffix
     if
       pipeline.runners[stage_name] == nil
-      and vim.tbl_contains(settings.preview_extensions, stage_name)
+      and vim.tbl_contains(config.preview_extensions, stage_name)
     then
       stage_name = "display"
     end

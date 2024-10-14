@@ -5,7 +5,7 @@
 -- to user preference.
 -- This functionality is also used for displaying errors.
 
-local settings = require "fence_preview.settings"
+local config = require "fence_preview.config"
 
 local TEXT_NAMESPACE = vim.api.nvim_create_namespace("fence-preview-text")
 
@@ -79,7 +79,7 @@ local function message_to_extmark(range, message, highlight)
               ---@type hlpair[]
               return {{ tostring(line), highlight }}
             end,
-            trim_to_line_count(message, settings.maximum_text_lines)
+            trim_to_line_count(message, config.maximum_text_lines)
           )
         }
       end
@@ -93,7 +93,7 @@ local function message_to_extmark(range, message, highlight)
           end,
           trim_to_line_count(
             vim.split("\n", vim.inspect(message)),
-            settings.maximum_text_lines
+            config.maximum_text_lines
           )
         )
       }

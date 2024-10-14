@@ -5,7 +5,7 @@
 -- images on top of buffer contents, rather than adding virtual lines.
 
 local sixel_extmarks = require "sixel_extmarks"
-local settings = require "fence_preview.settings"
+local config = require "fence_preview.config"
 
 local sixel_inline = {
   name = "sixel_inline"
@@ -30,7 +30,7 @@ local function refold(node)
 
   local height = math.max(
     node.params and node.params.height or (node.range[2] - node.range[1] + 1),
-    settings.minimum_inline_fence_height
+    config.minimum_inline_fence_height
   )
   vim.print(height, node.range)
   -- Nothing to fold
@@ -57,7 +57,7 @@ function sixel_inline.add(node, path)
   if node.type == "file" then
     -- Place the extmark right below the image
     start_line = node.range[1]
-    height = settings.default_virtual_file_height
+    height = config.default_virtual_file_height
   elseif --[[ node.type == "fence" and ]] node.params.height ~= nil then
     height = node.params.height
   end
