@@ -60,7 +60,7 @@ local function message_to_extmark(range, message, highlight)
     if type(message[1]) == "string" then
       if #message == 1 then
         extmark_args = {
-          virt_text = {{ tostring(message), highlight }},
+          virt_text = {{ tostring(message[1]), highlight }},
           virt_text_pos = "eol",
         }
       else

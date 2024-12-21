@@ -23,10 +23,10 @@ function latex.add_math_preamble(args)
   local extra_preamble = extra_packages .. "\n" .. config.latex.extra_preamble
 
   -- Background color based on current `background` option
-  local background = config.latex.force_mode == "" and vim.o.background or config.latex.force_mode
+  local background = config.latex.force_mode
   local extra_document = config.latex.extra_document
   if background == "dark" then
-    extra_document = DARK_COLORS
+    extra_document = extra_document .. DARK_COLORS
   end
 
   local ret = {

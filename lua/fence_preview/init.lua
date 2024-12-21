@@ -133,6 +133,13 @@ function fence_preview.bind()
     {}
   )
 
+  vim.api.nvim_buf_create_user_command(
+    0,
+    "FenceLogs",
+    fence_preview.show_logs,
+    {}
+  )
+
   buffers.prepare_new(current_buffer)
   update.current_buffer()
   set_current_window_options()

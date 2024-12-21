@@ -47,6 +47,12 @@ local function update_config()
   if err or not image_extmarks.config.allow_virtual then
     config.image_extmark_handler = "sixel_inline"
   end
+
+  -- Attempting to retrieve an option's value inside a pipeline requires
+  -- being synchronous with vim
+  if config.latex.force_mode == "" then
+    config.latex.force_mode = vim.o.background
+  end
 end
 
 -- Load options from global variables and argument options

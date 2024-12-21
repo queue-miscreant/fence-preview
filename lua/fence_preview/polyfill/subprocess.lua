@@ -72,7 +72,7 @@ function subprocess.spawn(process, params, callback, callback_timeout)
   if stdout ~= nil then
     stdout:read_start(function(err, data)
       assert(not err, err)
-      if data == nil then table.insert(stdout_content, data) end
+      if data ~= nil then table.insert(stdout_content, data) end
     end)
   end
 

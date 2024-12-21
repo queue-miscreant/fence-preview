@@ -17,6 +17,7 @@ function python.run_python(args, callback, error_callback)
       cwd = path.tempdir,
     },
     function(ret)
+      args.node:log("Got stdout:")
       args.node:log(ret.stdout)
 
       if ret.code ~= 0 then
