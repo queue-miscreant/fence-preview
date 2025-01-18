@@ -39,7 +39,6 @@ local function refold(node)
     node.params and node.params.height or (node.range[2] - node.range[1] + 1),
     config.minimum_inline_fence_height
   )
-  vim.print(height, node.range)
   -- Nothing to fold
   if height >= node.range[2] - node.range[1] + 1 then
     return
@@ -58,20 +57,9 @@ end
 function sixel_inline.add(node, path)
   refold(node)
 
-  -- Place the extmark right after the fence
-  local start_line = node.range[2]
-  local height = node.range[2] - node.range[1] + 1
-  if node.type == "file" then
-    -- Place the extmark right below the image
-    start_line = node.range[1]
-    height = config.default_virtual_file_height
-  elseif --[[ node.type == "fence" and ]] node.params.height ~= nil then
-    height = node.params.height
-  end
-
-  return sixel_extmarks.create_virtual(
-    start_line - 1,
-    height,
+  return sixel_extmarks.create(
+    node.range[1] - 1,
+    node.range[2] - 1,
     path.path
   )
 end

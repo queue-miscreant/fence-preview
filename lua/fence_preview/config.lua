@@ -42,9 +42,9 @@ local config = vim.deepcopy(default_config) or default_config
 -- Additional updates to config
 local function update_config()
   -- Set the handler for inline extmarks if we don't allow virtual ones
-  local err, image_extmarks = pcall(function() return require("sixel_extmarks") end)
+  local ok, image_extmarks_config = pcall(function() return require("sixel_extmarks.config") end)
 
-  if err or not image_extmarks.config.allow_virtual then
+  if not ok or not image_extmarks_config.allow_virtual then
     config.image_extmark_handler = "sixel_inline"
   end
 

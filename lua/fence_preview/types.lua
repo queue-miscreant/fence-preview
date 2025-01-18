@@ -32,7 +32,6 @@
 ---@field buffer integer
 ---@field draw_number? integer
 ---@field logs string[]
----
 ---@field is_line_inside? fun(self: Node, line: integer): boolean
 ---@field equals? fun(self: Node, other: Node): boolean
 ---@field log? fun(self: FenceNode, ...: any)
@@ -48,7 +47,6 @@
 ---@field buffer integer
 ---@field draw_number? integer
 ---@field logs string[]
----
 ---@field is_line_inside? fun(self: Node, line: integer): boolean
 ---@field equals? fun(self: Node, other: Node): boolean
 ---@field log? fun(self: FileNode, ...: any)
