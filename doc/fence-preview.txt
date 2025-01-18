@@ -46,9 +46,16 @@ See |fence-preview-#latex| for more information about this one specifically.
 FENCE OPTIONS                                           *fence-preview-fence-options*
                                                         *fence_option*
 
-Writing more than the filetype to the top fence tends to mess with vimwiki.
-The bottom fence is a little nicer. Options can be specified there to provide
-further control to the plugin.
+Adding things to fence boundaries tends to mess with Vimwiki. The top fence
+can accept a |filetype|, but adding anything onto it will load the wrong
+syntax for the fence content. Conversely, adding things to the bottom fence
+typically causes syntax highlighting failures on buffer contents after the
+bottom.
+
+Therefore, the first line of fenced content is interpreted specially.
+The plugin interprets this line as extra options if it starts with
+non-alphanumeric content followed by a comma-separated list of strings, which
+may have (similar to comma-separated XML parameters)
 
 {height}
 
@@ -58,12 +65,18 @@ occupied by the fence. `height` changes this to the number of lines specified.
 For example,
 >
   ```latex
+  % height=5
   \int 2xdx = x^2 + C
-  ```height=5
+  ```
 
-Will render with 5 rather than 3 lines.
+Will render with 5 rather than 4 lines.
 Note that rendering a taller image than the fence only works properly on
 Neovim 0.10+. (TODO)
+
+{as}
+
+For certain plugins, interpret the "output" of the content as the input to
+another pipeline.
 
 
 PREVIEWS                                                *fence-preview-previews*
@@ -183,7 +196,9 @@ interpreter.
 By default, the output will be shown as text. Adding {image} as a |fence_option|
 will attempt to display the image whose filename is output by the program.
 
-Similarly, the options {latex} and {math} chain into their respective pipelines.
+Similarly, the {as} fence option can be used with "latex" or "math" to chain
+into their respective pipelines.
+
 
 --------------------------------------------------------------------------------
 COMMANDS                                                *fence-preview-command*

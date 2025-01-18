@@ -70,6 +70,8 @@ TODOs
 
 - Manual foldmethod only for "inline" sixels
 - Add ability to halt running pipelines
+- Filetype from triple-backtick line, extra arguments from comment in content
+  - VimWiki doesn't like things being on the final line
 - Better splits
     - Preambles for fence content (TeX for math so that syntax works properly, Python imports(?))
 - Curl remote images

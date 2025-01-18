@@ -29,17 +29,18 @@ function python.run_python(args, callback, error_callback)
 
       local params = args.node.params
       local next_stage = nil
-      if vim.list_contains(params.others, "math") then
+      if params.as == "math" then
+        params.as = nil
         -- Chain into math pipeline
-        params["math"] = nil
         next_stage = "#math"
         args.node:log("Interpreting the above as a math block")
-      elseif vim.list_contains(params.others, "latex") then
+      elseif params.as == "latex" then
+        params.as = nil
         -- Chain into LaTeX pipeline
-        params["latex"] = nil
         next_stage = "#latex"
         args.node:log("Interpreting the above as a LaTeX block")
-      elseif vim.list_contains(params.others, "image") then
+      elseif params.as == "image" then
+        params.as = nil
         -- Display image
         next_stage = "display"
       else

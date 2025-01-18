@@ -11,51 +11,38 @@ local node_metatable = {}
 delimit.node_metatable = node_metatable
 
 
----@param params_list string[]
----@return FenceParams|nil
-local function parse_node_parameters(params_list)
-  local filetype = nil
-  local height = nil
+-- Parse extra parameters from the first line of content
+--
+---@param extra_params string
+---@return FenceParams
+local function parse_node_parameters(extra_params)
+  ---@type FenceParams
+  local params = {} ---@diagnostic disable-line
 
-  ---@type string[]
-  local others = {}
-
-  local params = table.concat(params_list, ",")
-  for i, param in ipairs(vim.split(params, ",")) do
+  -- Fetch content parameters from `extra_params`
+  -- These are typically supplied on the first line of the content
+  local content_params = extra_params:match("^%W*([%w =,]+)$") or ""
+  for _, param in ipairs(vim.split(content_params, ",")) do
     ---@type string
-    local trimmed_param = vim.trim(param)
+    local trimmed = vim.trim(param)
 
-    if i == 1 then
-      filetype = trimmed_param
-    elseif trimmed_param:find("height") == 1 then
-      ---@type string[]
-      local equal = vim.split(trimmed_param, "=")
-
-      if #equal > 1 then
-        local temp_height = tonumber(equal[2])
-        if temp_height ~= nil then
-          height = temp_height
-        end
-      end
+    ---@type string[]
+    local equal = vim.split(trimmed, "=")
+    if #equal > 1 then
+      params[trimmed] = tonumber(equal[2]) or equal[2]
+    elseif vim.tbl_contains({"math", "latex", "image"}, trimmed) then
+      params.as = param
     else
-      table.insert(others, trimmed_param)
+      params[trimmed] = true
     end
   end
 
-  if filetype == nil then
-    return nil
-  end
-
-  return {
-    filetype = filetype,
-    height = height,
-    others = others
-  }
+  return params
 end
 
 ---@class ParsingNode
 ---@field type "fence"|"file"
----@field parameters string[]
+---@field parameter string
 ---@field start integer
 ---@field end_? integer
 ---@field content? string[]
@@ -69,7 +56,7 @@ local function cook_node(node, buffer_number)
   local ret
 
   if node.type == "file" then
-    local filename = node.parameters[1]
+    local filename = node.parameter
     ---@type FileNode
     ret = {
       type = "file",
@@ -81,9 +68,10 @@ local function cook_node(node, buffer_number)
       logs = {},
     }
   else
-    local parsed = parse_node_parameters(node.parameters)
-    if parsed == nil then return nil end
     if #node.content == 0 then return nil end
+
+    local parsed = parse_node_parameters(node.content[1])
+    parsed.filetype = vim.trim(node.parameter)
 
     ---@type FenceNode
     ret = {
@@ -190,18 +178,17 @@ function delimit.generate_nodes(lines, buffer_number)
     end
 
     -- Content like this: "```[params]". Used to delimit fences
-    local fence_parameters = line:match("^%s*```([^`]*)")
-    if fence_parameters ~= nil then
+    local filetype = line:match("^%s*```([^`]*)")
+    if filetype ~= nil then
       -- Fence beginning
       if current_node == nil then
         current_node = {
           type = "fence",
-          parameters = { fence_parameters },
+          parameter = filetype,
           start = line_number
         }
       -- Fence ending, push node
       else
-        table.insert(current_node.parameters, fence_parameters)
         current_node.end_ = line_number
         current_node.id = #nodes + 1
         current_node.content= {}
@@ -225,13 +212,13 @@ function delimit.generate_nodes(lines, buffer_number)
       goto next
     end
 
-    -- Content [like this](params)
+    -- Content ![like this](params)
     -- `params` should contain filename
-    local file_parameters = line:match("^!%[[^%]]*%]%(([^%)]*)%)$")
-    if file_parameters ~= nil then
+    local file_parameter = line:match("^!%[[^%]]*%]%(([^%)]*)%)$")
+    if file_parameter ~= nil then
       current_node = {
         type = "file",
-        parameters = { file_parameters },
+        parameter = file_parameter,
         start = line_number
       }
       line_for_file = true

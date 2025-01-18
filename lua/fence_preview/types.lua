@@ -20,8 +20,7 @@
 ---@class FenceParams
 ---@field filetype string
 ---@field height? integer
----@field content string[]
----@field others string[]
+---@field as? string
 
 ---@class FenceNode
 ---@field type "fence"
