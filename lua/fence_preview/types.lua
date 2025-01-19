@@ -1,6 +1,7 @@
 ---@class PipelineExtmark
 ---@field id integer
 ---@field type string
+---@field module {}
 
 ---@class BufferData
 ---@field nodes (Node)[]

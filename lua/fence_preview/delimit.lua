@@ -227,6 +227,21 @@ function delimit.generate_nodes(lines, buffer_number)
     ::next::
   end
 
+  -- Cut off and push the image node if the line is not empty
+  if line_for_file then
+    assert(current_node ~= nil)
+    current_node.end_ = #lines - 1
+    current_node.id = #nodes + 1
+
+    local cooked = cook_node(current_node, buffer_number)
+    if cooked ~= nil then
+      table.insert(nodes, cooked)
+    end
+
+    current_node = nil
+    line_for_file = false
+  end
+
   return nodes
 end
 

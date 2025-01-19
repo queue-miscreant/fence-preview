@@ -153,6 +153,7 @@ function extmarks._add_image(buffer_data, node, path)
   buffer_data.node_id_to_extmarks[tostring(node.id)] = {
     id = new_extmark_id,
     type = handler,
+    module = module,
   }
 end
 
@@ -244,6 +245,7 @@ function extmarks._add_text_generic(buffer_data, node, message, highlight)
   buffer_data.node_id_to_extmarks[tostring(node.id)] = {
     id = new_extmark_id,
     type = text_extmark.name,
+    module = text_extmark,
   }
 
   -- Contingency for extmarks being shifted around by virtual text
@@ -311,11 +313,14 @@ end
 --
 ---@param buffer_data BufferData
 ---@param new_nodes Node[]
+---@param refresh? boolean
 ---@return {[string]: PipelineExtmark}
-local function reassign_extmarks(buffer_data, new_nodes)
+local function reassign_extmarks(buffer_data, new_nodes, refresh)
   local last_nodes = buffer_data.nodes or {}
   ---@type {[string]: PipelineExtmark}
   local new_mapping = {}
+  local removed_handlers = {}
+  local removed_some = false
 
   -- Compare the new nodes with the previous nodes
   for _, prev_node in ipairs(last_nodes) do
@@ -330,8 +335,16 @@ local function reassign_extmarks(buffer_data, new_nodes)
     end
     -- Node which no longer exists
     extmarks.remove_extmark(extmark)
+    removed_handlers[extmark.type] = extmark.module
+    removed_some = true
 
     ::matched::
+  end
+
+  if refresh and removed_some then
+    for _, module in pairs(removed_handlers) do
+      module.redraw(true)
+    end
   end
 
   return new_mapping
@@ -380,7 +393,7 @@ function extmarks.reassign_current_buffer(new_nodes)
   if buffer_data == nil then return end
 
   -- Make the extmark map tables consistent
-  buffer_data.node_id_to_extmarks = reassign_extmarks(buffer_data, new_nodes)
+  buffer_data.node_id_to_extmarks = reassign_extmarks(buffer_data, new_nodes, config.refresh_on_remove)
   buffer_data.nodes = new_nodes
   remove_all_unused(buffer_data, config.refresh_on_remove)
 

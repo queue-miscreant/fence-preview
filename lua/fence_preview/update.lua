@@ -44,6 +44,7 @@ function update.current_buffer()
   )
 end
 
+-- Try to draw the node the cursor was previously inside
 function update.try_inside_node(ignore_cursor)
   -- Do nothing if we did not hold off on processing a node due to cursor position
   if vim.b.fence_preview_inside_node == nil then return end

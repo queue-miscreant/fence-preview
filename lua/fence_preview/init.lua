@@ -113,11 +113,14 @@ function fence_preview.bind()
   vim.api.nvim_buf_create_user_command(
     0,
     "FenceRefreshAll",
-    function()
+    function(e)
+      local force = e.bang
       update.current_buffer()
-      extmarks.redraw_all()
+      extmarks.redraw_all(force)
     end,
-    {}
+    {
+      bang = true,
+    }
   )
 
   vim.api.nvim_buf_create_user_command(
@@ -126,7 +129,7 @@ function fence_preview.bind()
     function()
       local node = buffers.node_at_line(vim.fn.line("."))
       if node == nil then return end
-      if node.type == "file" then return end
+      -- if node.type == "file" then return end
 
       pipeline.pipe_node(node, true)
     end,
