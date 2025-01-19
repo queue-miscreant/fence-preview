@@ -342,7 +342,7 @@ end
 -- desynced from the buffer contents.
 --
 ---@param buffer_data BufferData
-local function remove_all_unused(buffer_data)
+local function remove_all_unused(buffer_data, refresh)
   -- Sort extmarks by type
   local extmarks_by_type = get_extmarks_by_type(buffer_data)
 
@@ -350,11 +350,18 @@ local function remove_all_unused(buffer_data)
   for module_name, current_extmarks in pairs(extmarks_by_type) do
     local module = extmarks.image_handlers[module_name]
     if module == nil then goto continue end
+
+    local removed_some = false
     -- Remove extmarks retrieved by the module that are NOT in `node_id_to_extmarks`
     for _, extmark_id in module.iter_ids() do
       if current_extmarks[tostring(extmark_id)] == nil then
         module.remove(extmark_id)
+        removed_some = true
       end
+    end
+
+    if refresh and removed_some then
+      module.redraw(true)
     end
 
     ::continue::
@@ -375,7 +382,7 @@ function extmarks.reassign_current_buffer(new_nodes)
   -- Make the extmark map tables consistent
   buffer_data.node_id_to_extmarks = reassign_extmarks(buffer_data, new_nodes)
   buffer_data.nodes = new_nodes
-  remove_all_unused(buffer_data)
+  remove_all_unused(buffer_data, config.refresh_on_remove)
 
   return buffer_data
 end

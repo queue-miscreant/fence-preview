@@ -20,6 +20,8 @@ local default_config = {
   default_virtual_file_height = 10,
   maximum_text_lines = 3,
 
+  refresh_on_remove = true,
+
   preview_extensions = { ".png", ".jpg", ".jpeg" },
 
   latex = {

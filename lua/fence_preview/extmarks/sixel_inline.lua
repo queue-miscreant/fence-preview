@@ -88,6 +88,10 @@ end
 
 ---@type ExtmarkModuleRedraw
 function sixel_inline.redraw(force)
+  if force then
+    sixel_extmarks.clear_screen(true)
+  end
+  sixel_extmarks.redraw(force)
   sixel_extmarks.redraw(force)
 end
 
