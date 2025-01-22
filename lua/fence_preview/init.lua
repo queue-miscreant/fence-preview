@@ -7,6 +7,7 @@ require "fence_preview.stages"
 local buffers = require "fence_preview.buffers"
 local update = require "fence_preview.update"
 local side_window = require "fence_preview.side_window"
+local fragment = require "fence_preview.fragment"
 local pipeline = require "fence_preview.pipeline"
 local extmarks = require "fence_preview.extmarks"
 local config = require "fence_preview.config"
@@ -105,7 +106,8 @@ function fence_preview.bind()
       if node == nil then return end
       if node.type == "file" then return end
 
-      side_window.enter_window(node) ---@diagnostic disable-line
+      fragment.from_fence(node) ---@diagnostic disable-line
+      -- side_window.enter_window(node) ---@diagnostic disable-line
     end,
     {}
   )

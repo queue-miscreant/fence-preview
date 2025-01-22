@@ -9,6 +9,16 @@ local DARK_COLORS = [[
 \color{white}
 ]]
 
+local function is_document(lines)
+  for _, line in ipairs(lines) do
+    if line:find("\\begin{document}") then
+      return true
+    end
+  end
+
+  return false
+end
+
 -- Add a standard LaTeX preamble to lines which should always be interpreted in math mode.
 --
 ---@type PipelineStage
@@ -102,6 +112,30 @@ local function parse_latex_output(buf)
   end
 
   return err
+end
+
+
+function latex.check_document(args, callback, error_callback)
+  local tex_path = args.previous --[[@as Path]]
+  if tex_path.exists == nil or not tex_path:exists() then
+    error_callback("LaTeX file not found")
+    return
+  end
+
+  local file_contents = vim.fn.readfile(tex_path.path)
+  if not is_document(file_contents) then
+    local with_preamble = latex.add_math_preamble({
+      previous = file_contents,
+      node = args.node,
+    })
+    latex.write_tex({
+      previous = with_preamble,
+      node = args.node,
+    }, callback, error_callback)
+    return
+  end
+
+  return args.previous
 end
 
 

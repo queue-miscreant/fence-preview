@@ -142,5 +142,9 @@ function text.iter_ids()
   )
 end
 
+---@type ExtmarkModuleRedraw
+function text.redraw()
+end
+
 
 return text

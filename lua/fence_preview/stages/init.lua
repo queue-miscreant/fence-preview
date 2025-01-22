@@ -24,6 +24,7 @@ pipeline.define("error", {
 
 -- TeX file pipeline
 pipeline.define(".tex", {
+  stages.latex.check_document,
   stages.latex.generate_dvi_from_latex,
   stages.latex.generate_svg_from_dvi,
   -- latex.rasterize,

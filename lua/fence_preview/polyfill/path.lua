@@ -8,6 +8,7 @@
 ---@field basename string
 ---
 ---@field exists fun(path: Path): boolean
+---@field exists_dir fun(path: Path): boolean
 ---@field with_suffix fun(path: Path, suffix: string): Path
 ---@field parent fun(path: Path): Path
 ---@field relative_to fun(path: Path): Path
@@ -105,8 +106,8 @@ end
 function Path:parent()
   local dir = dirname(self.path)
   local ret = {
-    path = dirname,
-    _no_suffix = dirname,
+    path = dir,
+    _no_suffix = dir,
     suffix = "",
     basename = basename(dir)
   }
@@ -168,6 +169,13 @@ end
 ---@return boolean
 function Path:exists()
   return vim.fn.filereadable(self.path) ~= 0
+end
+
+-- Test the existence of the directory.
+--
+---@return boolean
+function Path:exists_dir()
+  return vim.fn.isdirectory(self.path) ~= 0
 end
 
 return Path
